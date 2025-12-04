@@ -29,7 +29,11 @@
       "Bash(node create-admin.js:*)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
