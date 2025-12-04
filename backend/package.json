@@ -5,8 +5,11 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd ../frontend && npm install && npm run build",
+    "build:backend": "tsc",
     "start": "node dist/index.js",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"

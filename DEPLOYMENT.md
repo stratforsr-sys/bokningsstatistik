@@ -1,138 +1,228 @@
-# Deployment Guide
+# Deployment Guide - Unified Application
 
-## Vercel Deployment (Frontend)
+## Översikt
 
-**VIKTIGT:** Projektet är nu konfigurerat med `vercel.json` som automatiskt hanterar monorepo-strukturen. Du behöver INTE ändra Root Directory manuellt.
+Applikationen är nu **unified** - backend serverar frontend som statiska filer. Allt körs från **EN** server, ingen separat frontend/backend deployment behövs.
 
-### Steg 1: Vercel ska automatiskt hitta rätt konfiguration
+## Lokal Utveckling
 
-När Vercel detecterar `vercel.json` i root:
-- Frontend byggs automatiskt från `frontend/` mappen
-- Build command: `npm run vercel-build` (definierad i frontend/package.json)
-- Output directory: `dist`
-- Ingen manuell Root Directory-konfiguration behövs!
-
-**OM det fortfarande inte fungerar, gör detta manuellt:**
-
-1. Gå till ditt projekt på Vercel
-2. Gå till **Settings** → **General**
-3. Ändra följande inställningar:
-
-**Root Directory:**
+Starta applikationen:
+```bash
+cd backend
+npm run dev
 ```
-frontend
-```
+
+Öppna webbläsaren: **http://localhost:3000**
+
+Backend och frontend körs nu på **samma port (3000)**.
+
+---
+
+## Vercel Deployment (Rekommenderat)
+
+### Steg 1: Skapa Vercel Project
+
+1. Gå till [Vercel Dashboard](https://vercel.com/dashboard)
+2. Klicka på **Add New** → **Project**
+3. Importera ditt GitHub repository: `stratforsr-sys/bokningsstatistik`
+
+### Steg 2: Konfigurera Build Settings
+
+**VIKTIGT:** Ändra Root Directory till `backend`
 
 **Build & Development Settings:**
-- Framework Preset: `Vite`
+- Root Directory: `backend`
+- Framework Preset: `Other`
 - Build Command: `npm run build`
-- Output Directory: `dist`
+- Output Directory: (lämna tomt)
 - Install Command: `npm install`
 
-### Steg 2: Konfigurera Environment Variables
+### Steg 3: Environment Variables
 
-Gå till **Settings** → **Environment Variables** och lägg till:
+Lägg till följande environment variables i Vercel (**Settings** → **Environment Variables**):
 
 ```
-VITE_API_BASE_URL=https://your-backend-domain.com
+DATABASE_URL=postgresql://username:password@host:5432/database
+JWT_SECRET=<generera-en-säker-nyckel-minst-32-tecken>
+JWT_EXPIRES_IN=7d
+NODE_ENV=production
 ```
 
-### Steg 3: Deploy
+**För att få en PostgreSQL databas:**
+- Använd [Supabase](https://supabase.com) (gratis tier)
+- Eller [Neon](https://neon.tech) (gratis tier)
+- Eller [Railway](https://railway.app) PostgreSQL
+- Kopiera connection string till `DATABASE_URL`
 
-Klicka på **Deploy** eller vänta på automatisk deploy vid nästa git push.
+### Steg 4: Deploy
+
+Klicka på **Deploy**. Vercel kommer:
+1. Bygga frontend (via `npm run build:frontend`)
+2. Bygga backend (via `npm run build:backend`)
+3. Deploya backend som serverar frontend
+
+### Steg 5: Kör Database Migrations
+
+Efter första deploy, kör migrations:
+
+1. Gå till ditt Vercel projekt
+2. Klicka på **Settings** → **Environment Variables**
+3. Kopiera `DATABASE_URL`
+4. På din lokala dator, kör:
+
+```bash
+cd backend
+DATABASE_URL="<din-vercel-database-url>" npx prisma migrate deploy
+```
+
+### Steg 6: Skapa Admin-användare
+
+Kör detta lokalt med Vercel database URL:
+
+```bash
+cd backend
+DATABASE_URL="<din-vercel-database-url>" node create-admin.js
+```
 
 ---
 
-## Backend Deployment Options
+## Alternativ: Railway Deployment
 
-### Option 1: Render.com (Rekommenderat för Node.js + PostgreSQL)
+Railway kan deploya fullstack Node.js apps enkelt:
 
-1. Skapa ett konto på [Render.com](https://render.com)
-2. Skapa en **Web Service**:
-   - Repository: `stratforsr-sys/bokningsstatistik`
-   - Root Directory: `backend`
-   - Build Command: `npm install && npx prisma generate`
-   - Start Command: `npm start`
-   - Environment: `Node`
+### Steg 1: Skapa Railway Project
 
-3. Skapa en **PostgreSQL Database**:
-   - Kopiera connection string
-
-4. Lägg till Environment Variables:
-   ```
-   DATABASE_URL=<din-postgresql-url>
-   JWT_SECRET=<generera-en-säker-nyckel>
-   JWT_EXPIRES_IN=7d
-   FRONTEND_URL=https://din-vercel-domain.vercel.app
-   NODE_ENV=production
-   PORT=3000
-   ```
-
-5. Efter deploy, kör migrations:
-   - Gå till Shell i Render dashboard
-   - Kör: `npx prisma migrate deploy`
-
-### Option 2: Railway.app
-
-1. Skapa konto på [Railway.app](https://railway.app)
+1. Gå till [Railway.app](https://railway.app)
 2. **New Project** → **Deploy from GitHub repo**
 3. Välj `bokningsstatistik`
-4. Lägg till PostgreSQL:
-   - Click **+ New** → **Database** → **Add PostgreSQL**
-5. Konfigurera backend service:
-   - Root Directory: `backend`
-   - Build Command: `npm install && npx prisma generate`
-   - Start Command: `npm start`
-6. Lägg till Environment Variables (samma som ovan)
-7. Deploy och kör migrations via Railway CLI eller dashboard
 
-### Option 3: Fly.io
+### Steg 2: Konfigurera Service
 
-Se dokumentation: https://fly.io/docs/languages-and-frameworks/node/
+**Root Directory:** `backend`
+
+**Build Command:**
+```bash
+npm run build
+```
+
+**Start Command:**
+```bash
+npm start
+```
+
+### Steg 3: Lägg till PostgreSQL
+
+1. I Railway dashboard, klicka **+ New**
+2. Välj **Database** → **PostgreSQL**
+3. Railway kopplar automatiskt `DATABASE_URL`
+
+### Steg 4: Environment Variables
+
+Lägg till:
+```
+JWT_SECRET=<generera-en-säker-nyckel>
+JWT_EXPIRES_IN=7d
+NODE_ENV=production
+```
+
+### Steg 5: Deploy & Migrations
+
+Railway deployer automatiskt. Kör sedan migrations:
+
+```bash
+railway run npx prisma migrate deploy
+```
 
 ---
 
-## Skapa Admin-användare
+## Alternativ: Render.com Deployment
 
-Efter backend är deployed, kör detta för att skapa första admin:
+### Steg 1: Skapa Web Service
 
-**Via Render/Railway Shell:**
+1. Gå till [Render.com](https://render.com)
+2. **New** → **Web Service**
+3. Anslut GitHub repo `bokningsstatistik`
+
+### Steg 2: Konfigurera
+
+**Root Directory:** `backend`
+
+**Build Command:**
 ```bash
+npm install && npm run build
+```
+
+**Start Command:**
+```bash
+npm start
+```
+
+### Steg 3: Skapa PostgreSQL Database
+
+1. **New** → **PostgreSQL**
+2. Kopiera Internal Database URL
+3. Lägg till som environment variable `DATABASE_URL` i Web Service
+
+### Steg 4: Environment Variables
+
+```
+DATABASE_URL=<från-postgresql-service>
+JWT_SECRET=<generera-säker-nyckel>
+JWT_EXPIRES_IN=7d
+NODE_ENV=production
+```
+
+### Steg 5: Deploy & Migrations
+
+Efter deploy, öppna Shell i Render dashboard:
+
+```bash
+npx prisma migrate deploy
 node create-admin.js
 ```
-
-**Eller via API (efter deploy):**
-```bash
-curl -X POST https://your-backend.com/api/users/invite \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@example.com",
-    "role": "ADMIN"
-  }'
-```
-
----
-
-## Vercel Frontend URL Update
-
-Efter att backend är deployed:
-
-1. Uppdatera environment variable i Vercel:
-   ```
-   VITE_API_BASE_URL=https://your-backend-url.onrender.com
-   ```
-2. Redeploy frontend
 
 ---
 
 ## Checklist
 
-- [ ] Backend deployed på Render/Railway/Fly.io
+- [ ] Backend + Frontend deployad som EN applikation
 - [ ] PostgreSQL databas skapad och ansluten
-- [ ] Environment variables konfigurerade
+- [ ] Environment variables konfigurerade (DATABASE_URL, JWT_SECRET, etc.)
 - [ ] Database migrations körda (`npx prisma migrate deploy`)
-- [ ] Admin-användare skapad
-- [ ] Frontend deployed på Vercel
-- [ ] Frontend pekar på rätt backend URL
-- [ ] CORS konfigurerat på backend för frontend domain
-- [ ] Test: Logga in på frontend med admin-användare
+- [ ] Admin-användare skapad (`node create-admin.js`)
+- [ ] Test: Öppna deployed URL och logga in
+
+---
+
+## Vanliga Problem
+
+### "Module not found" fel
+- Se till att `npm run build` körs korrekt
+- Kontrollera att både frontend och backend byggs
+
+### 404-fel på deployed site
+- Kontrollera att Root Directory är satt till `backend`
+- Verifiera att `frontend/dist` mappen finns efter build
+
+### Database connection error
+- Kontrollera `DATABASE_URL` i environment variables
+- Se till att databasen accepterar externa anslutningar
+
+### JWT errors
+- Sätt `JWT_SECRET` environment variable
+- Minst 32 tecken långt
+
+---
+
+## Skillnad mot tidigare struktur
+
+**Tidigare:** Separata deployments
+- Frontend på Vercel
+- Backend på Render/Railway
+- CORS konfiguration mellan två domäner
+
+**Nu:** Unified deployment
+- Backend serverar frontend
+- EN deployment, EN domän
+- Ingen CORS behövs
+- Enklare att deploya och underhålla
