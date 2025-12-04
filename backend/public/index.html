@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telink Boknings-statistik Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .status-ok {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .status-error {
+            background: #ef4444;
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            color: #333;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+
+        .endpoint-list {
+            list-style: none;
+        }
+
+        .endpoint-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8fafc;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+
+        .endpoint-method {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+
+        .method-get {
+            background: #10b981;
+            color: white;
+        }
+
+        .method-post {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .method-patch {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .method-delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        .endpoint-path {
+            font-family: monospace;
+            color: #666;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #64748b;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .json-output {
+            background: #1e293b;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            max-height: 400px;
+            margin-top: 15px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f4f6;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .alert-warning {
+            background: #fef3c7;
+            color: #92400e;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            background: #e2e8f0;
+            color: #64748b;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .tab-button.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .meeting-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .meeting-table th,
+        .meeting-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .meeting-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .meeting-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge-booked {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-completed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-no-show {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-canceled {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .badge-rescheduled {
+            background: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Telink Boknings-statistik</h1>
+            <p class="subtitle">Backend API Dashboard</p>
+            <span class="status-badge status-ok" id="apiStatus">🟢 API: Ansluten</span>
+            <span class="status-badge status-warning" id="dbStatus">⚠️ Databas: Ej ansluten</span>
+        </header>
+
+        <!-- Statistik-kort -->
+        <div class="grid" id="statsGrid">
+            <div class="card">
+                <h2>📊 Dagens bokningar</h2>
+                <div class="stat-box">
+                    <div class="stat-label">Idag</div>
+                    <div class="stat-value" id="stat-today">-</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📅 Veckans bokningar</h2>
+                <div class="stat-box">
+                    <div class="stat-label">Denna vecka</div>
+                    <div class="stat-value" id="stat-week">-</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Måndens bokningar</h2>
+                <div class="stat-box">
+                    <div class="stat-label">Denna månad</div>
+                    <div class="stat-value" id="stat-month">-</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>✅ Show Rate</h2>
+                <div class="stat-box">
+                    <div class="stat-label">Genomförda / Total</div>
+                    <div class="stat-value" id="stat-showrate">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Huvudinnehåll -->
+        <div class="grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="card">
+                <h2>🔌 API Endpoints</h2>
+                <ul class="endpoint-list">
+                    <li class="endpoint-item">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/health</span>
+                    </li>
+                    <li class="endpoint-item">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/meetings</span>
+                    </li>
+                    <li class="endpoint-item">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/meetings/:id</span>
+                    </li>
+                    <li class="endpoint-item">
+                        <span class="endpoint-method method-patch">PATCH</span>
+                        <span class="endpoint-path">/api/meetings/:id/status</span>
+                    </li>
+                    <li class="endpoint-item">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/api/meetings/from-link</span>
+                    </li>
+                    <li class="endpoint-item">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/stats/summary</span>
+                    </li>
+                    <li class="endpoint-item">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/api/stats/trends</span>
+                    </li>
+                    <li class="endpoint-item">
+                        <span class="endpoint-method method-get">GET</span>
+                        <span class="endpoint-path">/auth/login</span>
+                    </li>
+                    <li class="endpoint-item">
+                        <span class="endpoint-method method-post">POST</span>
+                        <span class="endpoint-path">/auth/sync</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>🧪 Testa API</h2>
+
+                <div class="tab-buttons">
+                    <button class="tab-button active" onclick="switchTab('stats')">Statistik</button>
+                    <button class="tab-button" onclick="switchTab('meetings')">Möten</button>
+                    <button class="tab-button" onclick="switchTab('health')">Health</button>
+                </div>
+
+                <!-- Stats Tab -->
+                <div id="tab-stats" class="tab-content active">
+                    <label>Period:</label>
+                    <select id="statsPeriod">
+                        <option value="today">Idag</option>
+                        <option value="week">Denna vecka</option>
+                        <option value="month" selected>Denna månad</option>
+                        <option value="total">Totalt</option>
+                    </select>
+                    <button onclick="fetchStats()">Hämta statistik</button>
+                </div>
+
+                <!-- Meetings Tab -->
+                <div id="tab-meetings" class="tab-content">
+                    <label>Status (valfritt):</label>
+                    <select id="meetingsStatus">
+                        <option value="">Alla</option>
+                        <option value="BOOKED">Bokade</option>
+                        <option value="COMPLETED">Genomförda</option>
+                        <option value="NO_SHOW">No-shows</option>
+                        <option value="CANCELED">Avbokade</option>
+                        <option value="RESCHEDULED">Ombokade</option>
+                    </select>
+                    <button onclick="fetchMeetings()">Hämta möten</button>
+                </div>
+
+                <!-- Health Tab -->
+                <div id="tab-health" class="tab-content">
+                    <p>Testa API-anslutningen och systemhälsa.</p>
+                    <button onclick="checkHealth()">Kontrollera hälsa</button>
+                </div>
+
+                <div id="testOutput" class="json-output" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Möteslista -->
+        <div class="card" id="meetingsCard" style="display: none;">
+            <h2>📋 Möten</h2>
+            <div id="meetingsList"></div>
+        </div>
+
+        <!-- Info -->
+        <div class="card">
+            <h2>ℹ️ Information</h2>
+            <div class="alert alert-info">
+                <strong>Backend körs:</strong> http://localhost:3000<br>
+                <strong>Databas:</strong> PostgreSQL behöver köras för full funktionalitet<br>
+                <strong>Azure AD:</strong> Konfigureras via .env-filen för Outlook/Teams-integration
+            </div>
+            <div class="alert alert-warning" id="dbWarning" style="display: none;">
+                <strong>⚠️ Databas ej ansluten</strong><br>
+                För att kunna spara och hämta möten behöver du starta PostgreSQL:<br>
+                <code style="background: white; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 8px;">
+                    docker run --name telink-postgres -e POSTGRES_PASSWORD=password123 -e POSTGRES_DB=telink_meetings -p 5432:5432 -d postgres:14
+                </code>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+
+        // Kontrollera API-status vid laddning
+        window.addEventListener('DOMContentLoaded', async () => {
+            await checkApiStatus();
+            await loadStats();
+        });
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tab}`).classList.add('active');
+        }
+
+        async function checkApiStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+
+                if (data.status === 'ok') {
+                    document.getElementById('apiStatus').className = 'status-badge status-ok';
+                    document.getElementById('apiStatus').textContent = '🟢 API: Ansluten';
+                } else {
+                    document.getElementById('apiStatus').className = 'status-badge status-error';
+                    document.getElementById('apiStatus').textContent = '🔴 API: Fel';
+                }
+            } catch (error) {
+                document.getElementById('apiStatus').className = 'status-badge status-error';
+                document.getElementById('apiStatus').textContent = '🔴 API: Ej ansluten';
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/stats/summary?period=month`);
+                const result = await response.json();
+
+                if (result.success) {
+                    const stats = result.stats;
+                    document.getElementById('stat-today').textContent = stats.dagens_bokningar || 0;
+                    document.getElementById('stat-week').textContent = stats.veckans_bokningar || 0;
+                    document.getElementById('stat-month').textContent = stats.manadens_bokningar || 0;
+                    document.getElementById('stat-showrate').textContent =
+                        stats.show_rate ? `${(stats.show_rate * 100).toFixed(0)}%` : '0%';
+
+                    document.getElementById('dbStatus').className = 'status-badge status-ok';
+                    document.getElementById('dbStatus').textContent = '🟢 Databas: Ansluten';
+                } else {
+                    showDbWarning();
+                }
+            } catch (error) {
+                showDbWarning();
+            }
+        }
+
+        function showDbWarning() {
+            document.getElementById('dbWarning').style.display = 'block';
+            document.getElementById('dbStatus').className = 'status-badge status-warning';
+            document.getElementById('dbStatus').textContent = '⚠️ Databas: Ej ansluten';
+        }
+
+        async function fetchStats() {
+            const period = document.getElementById('statsPeriod').value;
+            const output = document.getElementById('testOutput');
+            output.style.display = 'block';
+            output.textContent = 'Laddar...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/stats/summary?period=${period}`);
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                output.textContent = `Fel: ${error.message}`;
+            }
+        }
+
+        async function fetchMeetings() {
+            const status = document.getElementById('meetingsStatus').value;
+            const output = document.getElementById('testOutput');
+            const meetingsCard = document.getElementById('meetingsCard');
+            const meetingsList = document.getElementById('meetingsList');
+
+            output.style.display = 'block';
+            output.textContent = 'Laddar...';
+
+            try {
+                const url = status
+                    ? `${API_BASE}/api/meetings?status=${status}`
+                    : `${API_BASE}/api/meetings`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                output.textContent = JSON.stringify(data, null, 2);
+
+                if (data.success && data.meetings && data.meetings.length > 0) {
+                    meetingsCard.style.display = 'block';
+                    meetingsList.innerHTML = renderMeetingsTable(data.meetings);
+                } else {
+                    meetingsCard.style.display = 'none';
+                }
+            } catch (error) {
+                output.textContent = `Fel: ${error.message}`;
+                meetingsCard.style.display = 'none';
+            }
+        }
+
+        function renderMeetingsTable(meetings) {
+            let html = '<table class="meeting-table"><thead><tr>';
+            html += '<th>Datum</th><th>Ämne</th><th>Status</th><th>Bokare</th><th>Kvalitet</th>';
+            html += '</tr></thead><tbody>';
+
+            meetings.forEach(meeting => {
+                const date = new Date(meeting.startTime).toLocaleDateString('sv-SE');
+                const status = meeting.status.toLowerCase().replace('_', '-');
+                const statusText = {
+                    'booked': 'Bokad',
+                    'completed': 'Genomförd',
+                    'no-show': 'No-show',
+                    'canceled': 'Avbokad',
+                    'rescheduled': 'Ombokad'
+                }[status] || meeting.status;
+
+                html += '<tr>';
+                html += `<td>${date}</td>`;
+                html += `<td>${meeting.subject || 'Ingen titel'}</td>`;
+                html += `<td><span class="badge badge-${status}">${statusText}</span></td>`;
+                html += `<td>${meeting.booker?.name || 'Okänd'}</td>`;
+                html += `<td>${meeting.qualityScore ? '⭐'.repeat(meeting.qualityScore) : '-'}</td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            return html;
+        }
+
+        async function checkHealth() {
+            const output = document.getElementById('testOutput');
+            output.style.display = 'block';
+            output.textContent = 'Kontrollerar...';
+
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                output.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                output.textContent = `Fel: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
