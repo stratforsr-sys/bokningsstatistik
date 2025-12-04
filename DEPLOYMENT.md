@@ -2,7 +2,17 @@
 
 ## Vercel Deployment (Frontend)
 
-### Steg 1: Konfigurera Vercel Project
+**VIKTIGT:** Projektet är nu konfigurerat med `vercel.json` som automatiskt hanterar monorepo-strukturen. Du behöver INTE ändra Root Directory manuellt.
+
+### Steg 1: Vercel ska automatiskt hitta rätt konfiguration
+
+När Vercel detecterar `vercel.json` i root:
+- Frontend byggs automatiskt från `frontend/` mappen
+- Build command: `npm run vercel-build` (definierad i frontend/package.json)
+- Output directory: `dist`
+- Ingen manuell Root Directory-konfiguration behövs!
+
+**OM det fortfarande inte fungerar, gör detta manuellt:**
 
 1. Gå till ditt projekt på Vercel
 2. Gå till **Settings** → **General**
