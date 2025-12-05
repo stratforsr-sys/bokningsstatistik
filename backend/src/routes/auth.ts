@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { UserRole } from '@prisma/client';
 import { graphService } from '../services/graphService';
 import { msalService } from '../services/msalService';
 import { meetingService } from '../services/meetingService';
@@ -304,12 +305,12 @@ router.get('/callback', async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      // Skapa ny användare (default role: BOOKER)
+      // Skapa ny användare (default role: USER)
       user = await prisma.user.create({
         data: {
           email: userInfo.email,
           name: userInfo.name,
-          role: 'BOOKER',
+          role: UserRole.USER,
         },
       });
       console.log(`✨ Ny användare skapad: ${user.name} (${user.email})`);

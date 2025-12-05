@@ -4,7 +4,7 @@ import { graphService } from '../services/graphService';
 import { authMiddleware, requireRole } from '../middleware/auth';
 import { requireMeetingOwnership, getMeetingFilterForUser } from '../middleware/ownership';
 import prisma from '../db';
-import { MeetingStatus, StatusReason } from '@prisma/client';
+import { MeetingStatus, StatusReason, UserRole } from '@prisma/client';
 
 const router = Router();
 
@@ -270,7 +270,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
           data: {
             name: 'System',
             email: 'system@telink.se',
-            role: 'ADMIN',
+            role: UserRole.ADMIN,
           },
         });
         console.log('✨ System-användare skapad för manuella möten');
@@ -430,7 +430,7 @@ router.post('/from-link', authMiddleware, async (req: Request, res: Response) =>
           data: {
             name: 'System',
             email: 'system@telink.se',
-            role: 'ADMIN',
+            role: UserRole.ADMIN,
           },
         });
         console.log('✨ System-användare skapad för möte från länk');
@@ -477,6 +477,16 @@ router.post('/from-link', authMiddleware, async (req: Request, res: Response) =>
     if (!userToken) {
       console.log('No user token found - creating basic meeting without Graph API');
 
+      // Hämta användarnas namn
+      const booker = await prisma.user.findUnique({
+        where: { id: finalUserId },
+        select: { name: true },
+      });
+      const owner = await prisma.user.findUnique({
+        where: { id: finalOwnerId },
+        select: { name: true },
+      });
+
       // Skapa ett basiskt möte med länken
       const now = new Date();
       const startTime = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Imorgon
@@ -492,7 +502,9 @@ router.post('/from-link', authMiddleware, async (req: Request, res: Response) =>
           organizerEmail: 'unknown@telink.se',
           joinUrl: link,
           bookerId: finalUserId,
+          bookerName: booker?.name || 'Unknown',
           ownerId: finalOwnerId,
+          ownerName: owner?.name || 'Unknown',
           status: 'BOOKED',
           notes: 'Möte skapat från länk utan Graph API-autentisering. Vänligen logga in för att hämta fullständig mötesdata.',
         },

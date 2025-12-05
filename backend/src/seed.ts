@@ -1,4 +1,5 @@
 import prisma from './db';
+import { UserRole } from '@prisma/client';
 
 async function seed() {
   console.log('🌱 Seeding database...');
@@ -11,7 +12,7 @@ async function seed() {
       id: 'demo-user',
       email: 'demo@telink.se',
       name: 'Demo Användare',
-      role: 'BOOKER',
+      role: UserRole.USER,
     },
   });
 

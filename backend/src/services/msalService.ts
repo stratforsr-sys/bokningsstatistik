@@ -23,14 +23,14 @@ export const msalService = {
    * @param state - Valfri state-parameter för CSRF-skydd
    * @returns Authorization URL som användaren ska redirectas till
    */
-  getAuthUrl(state?: string): string {
+  async getAuthUrl(state?: string): Promise<string> {
     const authCodeUrlParameters: AuthorizationUrlRequest = {
       scopes: config.azure.scopes,
       redirectUri: config.azure.redirectUri,
       state: state || Math.random().toString(36).substring(7),
     };
 
-    return cca.getAuthCodeUrl(authCodeUrlParameters).then(url => url);
+    return await cca.getAuthCodeUrl(authCodeUrlParameters);
   },
 
   /**
@@ -47,9 +47,12 @@ export const msalService = {
 
     try {
       const response = await cca.acquireTokenByCode(tokenRequest);
+      if (!response) {
+        throw new Error('No response from token acquisition');
+      }
       return {
         access_token: response.accessToken,
-        refresh_token: response.refreshToken || '',
+        refresh_token: '', // MSAL does not expose refresh token
         expires_in: response.expiresOn ? Math.floor((response.expiresOn.getTime() - Date.now()) / 1000) : 3600,
         token_type: response.tokenType,
       };
@@ -72,9 +75,12 @@ export const msalService = {
 
     try {
       const response = await cca.acquireTokenByRefreshToken(refreshTokenRequest);
+      if (!response) {
+        throw new Error('No response from token refresh');
+      }
       return {
         access_token: response.accessToken,
-        refresh_token: response.refreshToken || refreshToken,
+        refresh_token: refreshToken, // Use the original refresh token
         expires_in: response.expiresOn ? Math.floor((response.expiresOn.getTime() - Date.now()) / 1000) : 3600,
         token_type: response.tokenType,
       };

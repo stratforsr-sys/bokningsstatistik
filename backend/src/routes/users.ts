@@ -201,7 +201,7 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
  */
 router.post('/', authMiddleware, requireRole('ADMIN'), async (req: Request, res: Response) => {
   try {
-    const { name, email, role = 'BOOKER' } = req.body;
+    const { name, email, role = 'USER' } = req.body;
 
     // Validera obligatoriska fält
     if (!name || !name.trim()) {
@@ -225,7 +225,7 @@ router.post('/', authMiddleware, requireRole('ADMIN'), async (req: Request, res:
     }
 
     // Validera role
-    const validRoles: UserRole[] = ['BOOKER', 'SALES', 'ADMIN'];
+    const validRoles: UserRole[] = [UserRole.USER, UserRole.MANAGER, UserRole.ADMIN];
     if (!validRoles.includes(role as UserRole)) {
       return res.status(400).json({
         error: 'Invalid role',
@@ -336,7 +336,7 @@ router.patch('/:id', authMiddleware, requireRole('ADMIN'), async (req: Request, 
 
     if (role !== undefined) {
       // Validera role
-      const validRoles: UserRole[] = ['BOOKER', 'SALES', 'ADMIN'];
+      const validRoles: UserRole[] = [UserRole.USER, UserRole.MANAGER, UserRole.ADMIN];
       if (!validRoles.includes(role as UserRole)) {
         return res.status(400).json({
           error: 'Invalid role',

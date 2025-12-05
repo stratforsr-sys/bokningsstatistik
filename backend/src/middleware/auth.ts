@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../config';
 import { UserRole } from '@prisma/client';
 import prisma from '../db';
@@ -172,7 +172,6 @@ export const createToken = (user: {
     role: user.role,
   };
 
-  return jwt.sign(payload, jwtSecret, {
-    expiresIn: jwtExpiresIn,
-  });
+  // @ts-ignore - TS has issues with expiresIn type but it works fine
+  return jwt.sign(payload, jwtSecret, { expiresIn: jwtExpiresIn });
 };

@@ -35,7 +35,8 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "Bash(ping:*)",
-      "Bash(npx create-next-app:*)"
+      "Bash(npx create-next-app:*)",
+      "Bash(npm run build:backend:*)"
     ],
     "deny": [],
     "ask": []
