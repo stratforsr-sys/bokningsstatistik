@@ -1,0 +1,19 @@
+{
+  "name": "telink-bokningsstatistik",
+  "version": "1.0.0",
+  "description": "Telink Bokningsstatistik - Unified Express + React App",
+  "main": "backend/dist/index.js",
+  "scripts": {
+    "install": "cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build && cd ../backend && npm run build",
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev"
+  },
+  "keywords": ["meetings", "statistics", "telink"],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
