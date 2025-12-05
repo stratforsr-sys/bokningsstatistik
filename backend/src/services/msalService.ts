@@ -4,18 +4,33 @@ import { config } from '../config';
 /**
  * MSAL Service - Hanterar OAuth-autentisering mot Microsoft
  * Använder MSAL (Microsoft Authentication Library) för säker token-hantering
+ *
+ * OBS: Denna service är optional. Om Azure credentials inte är konfigurerade,
+ * kommer applikationen fortfarande fungera men utan Microsoft Graph API integration.
  */
 
-// Konfigurera MSAL Client Application
-const msalConfig = {
-  auth: {
-    clientId: config.azure.clientId,
-    authority: `${config.graph.authUrl}/${config.azure.tenantId}`,
-    clientSecret: config.azure.clientSecret,
-  },
-};
+// Lazy initialization - skapar endast MSAL client när den faktiskt används
+let cca: ConfidentialClientApplication | null = null;
 
-const cca = new ConfidentialClientApplication(msalConfig);
+function getClient(): ConfidentialClientApplication {
+  if (!cca) {
+    // Kontrollera om Azure credentials finns
+    if (!config.azure.clientId || !config.azure.clientSecret || !config.azure.tenantId) {
+      throw new Error('Azure credentials are not configured. Please set AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, and AZURE_TENANT_ID environment variables.');
+    }
+
+    const msalConfig = {
+      auth: {
+        clientId: config.azure.clientId,
+        authority: `${config.graph.authUrl}/${config.azure.tenantId}`,
+        clientSecret: config.azure.clientSecret,
+      },
+    };
+
+    cca = new ConfidentialClientApplication(msalConfig);
+  }
+  return cca;
+}
 
 export const msalService = {
   /**
@@ -30,7 +45,7 @@ export const msalService = {
       state: state || Math.random().toString(36).substring(7),
     };
 
-    return await cca.getAuthCodeUrl(authCodeUrlParameters);
+    return await getClient().getAuthCodeUrl(authCodeUrlParameters);
   },
 
   /**
@@ -46,7 +61,7 @@ export const msalService = {
     };
 
     try {
-      const response = await cca.acquireTokenByCode(tokenRequest);
+      const response = await getClient().acquireTokenByCode(tokenRequest);
       if (!response) {
         throw new Error('No response from token acquisition');
       }
@@ -74,7 +89,7 @@ export const msalService = {
     };
 
     try {
-      const response = await cca.acquireTokenByRefreshToken(refreshTokenRequest);
+      const response = await getClient().acquireTokenByRefreshToken(refreshTokenRequest);
       if (!response) {
         throw new Error('No response from token refresh');
       }
