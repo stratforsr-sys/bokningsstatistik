@@ -8,10 +8,10 @@ import { UserRole } from '@prisma/client';
  *
  * Läser token från HttpOnly cookie och verifierar den
  */
-export function withAuth(
-  handler: (request: NextRequest, user: JWTPayload) => Promise<NextResponse>
+export function withAuth<T = any>(
+  handler: (request: NextRequest, user: JWTPayload, context?: T) => Promise<NextResponse>
 ) {
-  return async (request: NextRequest, context?: any) => {
+  return async (request: NextRequest, context?: T) => {
     const cookieStore = await cookies();
     const token = cookieStore.get('access_token')?.value;
 
@@ -31,12 +31,8 @@ export function withAuth(
       );
     }
 
-    // Pass context as second parameter if it exists (for dynamic routes like [id])
-    if (context) {
-      return handler(request, user);
-    }
-
-    return handler(request, user);
+    // Pass context as third parameter for dynamic routes like [id]
+    return handler(request, user, context);
   };
 }
 
@@ -45,11 +41,11 @@ export function withAuth(
  *
  * Måste användas tillsammans med withAuth
  */
-export function withRole(
+export function withRole<T = any>(
   roles: UserRole[],
-  handler: (request: NextRequest, user: JWTPayload) => Promise<NextResponse>
+  handler: (request: NextRequest, user: JWTPayload, context?: T) => Promise<NextResponse>
 ) {
-  return withAuth(async (request, user) => {
+  return withAuth<T>(async (request, user, context) => {
     if (!roles.includes(user.role)) {
       return NextResponse.json(
         {
@@ -61,6 +57,6 @@ export function withRole(
       );
     }
 
-    return handler(request, user);
+    return handler(request, user, context);
   });
 }
