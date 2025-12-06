@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL") // Uses connection pooling
+  directUrl = env("POSTGRES_URL_NON_POOLING") // For migrations
+}
+
+// Enum för användarroller
+enum UserRole {
+  USER     // Vanlig användare - kan bara se och ändra sina egna möten
+  MANAGER  // Manager - kan hantera möten/statistik men inte användare
+  ADMIN    // Administratör - full behörighet
+}
+
+// Enum för mötesstatus
+enum MeetingStatus {
+  BOOKED       // Mötet är bokat och ännu inte hållits
+  COMPLETED    // Mötet har hållits (kunden dök upp)
+  NO_SHOW      // Kunden dök inte upp
+  CANCELED     // Mötet avbokades, ingen ny tid sattes
+  RESCHEDULED  // Mötet ombokades till ny tid
+}
+
+// Enum för status-orsaker
+enum StatusReason {
+  // Completed reasons
+  MET_WITH_DECISION_MAKER
+  MET_WITH_STAKEHOLDER
+  PRODUCTIVE_MEETING
+
+  // No-show reasons
+  CLIENT_NO_SHOW
+  CLIENT_FORGOT
+
+  // Canceled reasons
+  NOT_INTERESTED
+  WRONG_CONTACT
+  TIMING_NOT_RIGHT
+  BUDGET_CONSTRAINTS
+
+  // Rescheduled reasons
+  RESCHEDULED_BY_CLIENT
+  RESCHEDULED_BY_US
+  TECHNICAL_ISSUE
+  CONFLICT_IN_CALENDAR
+
+  // General
+  OTHER
+}
+
+// Användartabell för bokare och säljare
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String?  @map("password_hash") // Nullable för Microsoft OAuth-användare
+  role         UserRole
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relationer
+  bookedMeetings Meeting[]     @relation("BookedBy")
+  ownedMeetings  Meeting[]     @relation("OwnedBy")
+  userTokens     UserToken[]
+}
+
+// Tabell för att spara OAuth tokens per användare
+model UserToken {
+  id           String   @id @default(uuid())
+  userId       String
+  accessToken  String   @db.Text
+  refreshToken String?  @db.Text
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Huvudtabell för möten
+model Meeting {
+  id               String        @id @default(uuid())
+  outlookEventId   String?       @unique // Outlook/Teams event ID (nullable för manuella möten)
+
+  // Tidsinformation
+  bookingDate      DateTime      // När mötet bokades
+  startTime        DateTime      // Start-tid för mötet
+  endTime          DateTime      // Slut-tid för mötet
+  lastUpdated      DateTime      @updatedAt
+
+  // Mötesdetaljer
+  subject          String?       // Mötesämne från Outlook
+  organizerEmail   String        // Vem som är organisatör
+  attendees        String?       @db.Text // JSON-array med deltagare
+  joinUrl          String?       @db.Text // Teams-länk
+  bodyPreview      String?       @db.Text // Förhandsgranskning av mötesinnehåll
+
+  // Ägarskap (med namn lagrade för att möjliggöra borttagning av användare)
+  bookerId         String?       // Vem som bokade mötet (nullable om användaren tagits bort)
+  bookerName       String        @map("booker_name") // Namn på bokaren (behålls även om användaren tas bort)
+  ownerId          String?       // Säljaren som ska ha mötet (nullable om användaren tagits bort)
+  ownerName        String        @map("owner_name") // Namn på ägaren (behålls även om användaren tas bort)
+
+  // Status och kvalitet
+  status           MeetingStatus @default(BOOKED)
+  statusReason     StatusReason?
+  qualityScore     Int?          // 1-5, endast för COMPLETED möten
+  notes            String?       @db.Text // Interna anteckningar
+
+  createdAt        DateTime      @default(now())
+
+  // Relationer (onDelete: SetNull gör att mötet behålls när användaren tas bort)
+  booker           User?         @relation("BookedBy", fields: [bookerId], references: [id], onDelete: SetNull)
+  owner            User?         @relation("OwnedBy", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([bookerId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([startTime])
+  @@index([bookingDate])
+}
+
+// Tabell för användarinvites
+model UserInvite {
+  id         String    @id @default(uuid())
+  email      String
+  role       UserRole  // Vilken roll den nya användaren ska få
+  tokenHash  String    @map("token_hash") @db.Text // Hash av invite-token
+  expiresAt  DateTime  @map("expires_at") // När inviten går ut (t.ex. +7 dagar)
+  acceptedAt DateTime? @map("accepted_at") // När inviten accepterades (null = ej accepterad)
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
