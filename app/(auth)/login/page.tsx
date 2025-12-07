@@ -19,6 +19,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Important: Include cookies
         body: JSON.stringify({ email, password }),
       });
 
@@ -34,6 +35,7 @@ export default function LoginPage() {
       router.push('/dashboard');
       router.refresh();
     } catch (err: any) {
+      console.error('Login error:', err);
       setError('Network error. Please try again.');
       setLoading(false);
     }
