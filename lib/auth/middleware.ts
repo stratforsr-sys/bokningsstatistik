@@ -22,7 +22,7 @@ export function withAuth<T = any>(
       );
     }
 
-    const user = verifyToken(token);
+    const user = await verifyToken(token);
 
     if (!user) {
       return NextResponse.json(

@@ -15,6 +15,9 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    console.log('[LOGIN] Starting login...', { email });
+    console.log('[LOGIN] Current URL:', window.location.href);
+
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
@@ -23,19 +26,35 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('[LOGIN] Response status:', res.status);
+      console.log('[LOGIN] Response headers:', Object.fromEntries(res.headers.entries()));
+
       const data = await res.json();
+      console.log('[LOGIN] Response data:', data);
 
       if (!res.ok) {
+        console.error('[LOGIN] Login failed:', data);
         setError(data.error || 'Login failed');
         setLoading(false);
         return;
       }
 
+      // Check if cookie was set
+      console.log('[LOGIN] All cookies (from document.cookie):', document.cookie);
+
       // Redirect to dashboard on success
-      router.push('/dashboard');
-      router.refresh();
+      console.log('[LOGIN] Login successful! Redirecting to dashboard...');
+
+      // Wait a bit for cookie to be set
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      console.log('[LOGIN] About to redirect...');
+
+      // Use window.location for hard redirect to ensure cookies are included
+      window.location.href = '/dashboard';
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error('[LOGIN] Error during login:', err);
+      console.error('[LOGIN] Error stack:', err.stack);
       setError('Network error. Please try again.');
       setLoading(false);
     }

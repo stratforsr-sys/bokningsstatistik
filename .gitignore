@@ -38,3 +38,15 @@ next-env.d.ts
 
 # Prisma
 /prisma/migrations/migration_lock.toml
+.env*.local
+
+# Temporary files
+cookies.txt
+nul
+.env.backup
+.env.check
+.env.migration
+.env.vercel
+
+# Claude Code
+.claude/

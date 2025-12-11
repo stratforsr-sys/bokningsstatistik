@@ -8,7 +8,7 @@ const protectedPaths = ['/dashboard', '/meetings', '/users'];
 // Sökvägar för autentisering (inloggade användare redirectas bort från dessa)
 const authPaths = ['/login', '/invite/complete'];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value;
   const path = request.nextUrl.pathname;
 
@@ -23,7 +23,7 @@ export function middleware(request: NextRequest) {
     }
 
     // Verify token
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     if (!payload) {
       // Invalid token - redirect to login
       const response = NextResponse.redirect(new URL('/login', request.url));
@@ -39,7 +39,7 @@ export function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from auth pages
   if (isAuthPath && token) {
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     if (payload) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }

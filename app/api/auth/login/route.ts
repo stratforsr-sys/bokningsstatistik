@@ -39,7 +39,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Skapa JWT token
-    const token = createToken(user);
+    console.log('[LOGIN API] Creating token for user:', user.email);
+    const token = await createToken(user);
+    console.log('[LOGIN API] Token created:', token.substring(0, 50) + '...');
 
     // Skapa response
     const response = NextResponse.json({
@@ -55,13 +57,16 @@ export async function POST(request: NextRequest) {
     });
 
     // Sätt HttpOnly cookie
-    response.cookies.set('access_token', token, {
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       maxAge: 7 * 24 * 60 * 60, // 7 dagar
       path: '/',
-    });
+    };
+    console.log('[LOGIN API] Setting cookie with options:', cookieOptions);
+    response.cookies.set('access_token', token, cookieOptions);
+    console.log('[LOGIN API] Cookie set successfully');
 
     return response;
   } catch (error: any) {

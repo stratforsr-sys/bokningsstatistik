@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 import { UserRole } from '@prisma/client';
 
 export interface JWTPayload {
@@ -13,12 +13,12 @@ export interface JWTPayload {
 /**
  * Skapar en JWT token för en användare
  */
-export function createToken(user: {
+export async function createToken(user: {
   id: string;
   email: string;
   name: string;
   role: UserRole;
-}): string {
+}): Promise<string> {
   const jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-this';
   const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
 
@@ -26,24 +26,35 @@ export function createToken(user: {
     console.warn('⚠️  JWT_SECRET not set in environment! Using default (INSECURE)');
   }
 
-  const payload: JWTPayload = {
+  const payload: Omit<JWTPayload, 'iat' | 'exp'> = {
     sub: user.id,
     email: user.email,
     name: user.name,
     role: user.role,
   };
 
-  return jwt.sign(payload, jwtSecret, { expiresIn: jwtExpiresIn } as jwt.SignOptions);
+  // Convert "7d" to seconds (7 days = 604800 seconds)
+  const expiresInSeconds = jwtExpiresIn === '7d' ? 604800 : 604800;
+
+  const secret = new TextEncoder().encode(jwtSecret);
+
+  return await new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(Math.floor(Date.now() / 1000) + expiresInSeconds)
+    .sign(secret);
 }
 
 /**
  * Verifierar en JWT token och returnerar payload
  */
-export function verifyToken(token: string): JWTPayload | null {
+export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-this';
-    return jwt.verify(token, jwtSecret) as JWTPayload;
-  } catch (error) {
+    const secret = new TextEncoder().encode(jwtSecret);
+    const { payload } = await jwtVerify(token, secret);
+    return payload as JWTPayload;
+  } catch (error: any) {
     return null;
   }
 }
