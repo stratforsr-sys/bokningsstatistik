@@ -13,8 +13,8 @@ import QualityScoreInput from './quality-score-input';
 const meetingSchema = z
   .object({
     subject: z.string().min(1, 'Ämne krävs').max(200, 'Ämne får vara max 200 tecken'),
-    startTime: z.date({ required_error: 'Starttid krävs' }),
-    endTime: z.date({ required_error: 'Sluttid krävs' }),
+    startTime: z.date({ message: 'Starttid krävs' }),
+    endTime: z.date({ message: 'Sluttid krävs' }),
     ownerId: z.string().optional(),
     status: z.enum(['BOOKED', 'COMPLETED', 'NO_SHOW', 'CANCELED', 'RESCHEDULED']),
     notes: z.string().max(1000, 'Anteckningar får vara max 1000 tecken').optional(),
@@ -140,7 +140,7 @@ export default function MeetingForm({
           render={({ field }) => (
             <QualityScoreInput
               label="Kvalitetsbetyg"
-              value={field.value}
+              value={field.value ?? null}
               onChange={field.onChange}
             />
           )}

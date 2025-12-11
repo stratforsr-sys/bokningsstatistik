@@ -10,7 +10,7 @@ import { meetingService } from '@/lib/services/meeting-service';
  */
 export const GET = withAuth(async (request, user, context) => {
   try {
-    const { id } = context!.params;
+    const { id } = await (context as { params: Promise<{ id: string }> }).params;
 
     const meeting = await meetingService.getMeetingById(id);
 
@@ -54,7 +54,7 @@ export const GET = withAuth(async (request, user, context) => {
  */
 export const PATCH = withAuth(async (request, user, context) => {
   try {
-    const { id } = context!.params;
+    const { id } = await (context as { params: Promise<{ id: string }> }).params;
     const body = await request.json();
     const {
       subject,
@@ -195,7 +195,7 @@ export const PATCH = withAuth(async (request, user, context) => {
  */
 export const DELETE = withAuth(async (request, user, context) => {
   try {
-    const { id } = context!.params;
+    const { id} = await (context as { params: Promise<{ id: string }> }).params;
     const { searchParams } = request.nextUrl;
     const hardDelete = searchParams.get('hardDelete') === 'true';
 

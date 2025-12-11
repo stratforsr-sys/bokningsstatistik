@@ -3,7 +3,7 @@
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { Calendar, Clock, User, Star, FileText, Link as LinkIcon } from 'lucide-react';
-import Card from '@/components/ui/card';
+import Card, { CardHeader, CardBody } from '@/components/ui/card';
 import MeetingStatusBadge from './meeting-status-badge';
 
 interface Meeting {
@@ -31,13 +31,13 @@ export default function MeetingDetailCard({ meeting }: MeetingDetailCardProps) {
 
   return (
     <Card>
-      <Card.Header>
+      <CardHeader>
         <div className="flex items-start justify-between">
           <h2 className="text-2xl font-bold text-gray-900">{meeting.subject}</h2>
           <MeetingStatusBadge status={meeting.status} />
         </div>
-      </Card.Header>
-      <Card.Body>
+      </CardHeader>
+      <CardBody>
         <dl className="space-y-4">
           {/* Date */}
           <div className="flex items-start gap-3">
@@ -132,7 +132,7 @@ export default function MeetingDetailCard({ meeting }: MeetingDetailCardProps) {
             </div>
           )}
         </dl>
-      </Card.Body>
+      </CardBody>
     </Card>
   );
 }

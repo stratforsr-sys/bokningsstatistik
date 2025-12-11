@@ -11,8 +11,9 @@ export const metadata = {
 export default async function MeetingDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
 
@@ -27,7 +28,7 @@ export default async function MeetingDetailPage({
       redirect('/login');
     }
 
-    return <MeetingDetailClient meetingId={params.id} />;
+    return <MeetingDetailClient meetingId={id} />;
   } catch (error) {
     redirect('/login');
   }

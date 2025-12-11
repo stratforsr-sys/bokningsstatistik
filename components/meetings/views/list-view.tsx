@@ -53,12 +53,12 @@ const statusLabels: Record<string, string> = {
   RESCHEDULED: 'Ombokad',
 };
 
-const statusVariants: Record<string, 'success' | 'warning' | 'error' | 'info' | 'neutral'> = {
-  BOOKED: 'info',
-  COMPLETED: 'success',
-  NO_SHOW: 'warning',
-  CANCELED: 'error',
-  RESCHEDULED: 'neutral',
+const statusVariants: Record<string, 'booked' | 'completed' | 'no-show' | 'canceled' | 'rescheduled'> = {
+  BOOKED: 'booked',
+  COMPLETED: 'completed',
+  NO_SHOW: 'no-show',
+  CANCELED: 'canceled',
+  RESCHEDULED: 'rescheduled',
 };
 
 export default function ListView({ meetings }: ListViewProps) {
@@ -189,7 +189,7 @@ export default function ListView({ meetings }: ListViewProps) {
         cell: ({ row }) => {
           const status = row.original.status;
           return (
-            <Badge variant={statusVariants[status] || 'neutral'} size="md">
+            <Badge variant={statusVariants[status] || 'rescheduled'} size="md">
               {statusLabels[status] || status}
             </Badge>
           );

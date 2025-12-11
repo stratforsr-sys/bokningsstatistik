@@ -6,11 +6,11 @@ import { updateUserSchema } from '@/lib/validations/user';
 import { JWTPayload } from '@/lib/auth/jwt';
 
 // GET /api/users/[id] - Hämta en användare
-export const GET = withRole<{ params: Promise<{ id: string }> }>(
+export const GET = withRole(
   [UserRole.ADMIN],
   async (request, user, context) => {
     try {
-      const { id } = await context!.params;
+      const { id } = await (context as { params: Promise<{ id: string }> }).params;
 
       const targetUser = await prisma.user.findUnique({
         where: { id },
@@ -59,18 +59,18 @@ export const GET = withRole<{ params: Promise<{ id: string }> }>(
 );
 
 // PUT /api/users/[id] - Uppdatera en användare
-export const PUT = withRole<{ params: Promise<{ id: string }> }>(
+export const PUT = withRole(
   [UserRole.ADMIN],
   async (request, user, context) => {
     try {
-      const { id } = await context!.params;
+      const { id } = await (context as { params: Promise<{ id: string }> }).params;
       const body = await request.json();
 
       // Validate input
       const validation = updateUserSchema.safeParse(body);
 
       if (!validation.success) {
-        const errors = validation.error.errors.map((err) => ({
+        const errors = validation.error.issues.map((err) => ({
           field: err.path.join('.'),
           message: err.message,
         }));
@@ -176,11 +176,11 @@ export const PUT = withRole<{ params: Promise<{ id: string }> }>(
 );
 
 // DELETE /api/users/[id] - Soft delete användare
-export const DELETE = withRole<{ params: Promise<{ id: string }> }>(
+export const DELETE = withRole(
   [UserRole.ADMIN],
   async (request, user, context) => {
     try {
-      const { id } = await context!.params;
+      const { id } = await (context as { params: Promise<{ id: string }> }).params;
 
       // Check if user exists
       const targetUser = await prisma.user.findUnique({

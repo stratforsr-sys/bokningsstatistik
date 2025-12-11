@@ -53,7 +53,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key-change-this';
     const secret = new TextEncoder().encode(jwtSecret);
     const { payload } = await jwtVerify(token, secret);
-    return payload as JWTPayload;
+    return payload as unknown as JWTPayload;
   } catch (error: any) {
     return null;
   }

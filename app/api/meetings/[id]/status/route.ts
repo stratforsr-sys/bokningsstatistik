@@ -10,7 +10,7 @@ import { MeetingStatus, StatusReason } from '@prisma/client';
  */
 export const PATCH = withAuth(async (request, user, context) => {
   try {
-    const { id } = context!.params;
+    const { id } = await (context as { params: Promise<{ id: string }> }).params;
     const body = await request.json();
     const { status, statusReason, qualityScore, notes } = body;
 

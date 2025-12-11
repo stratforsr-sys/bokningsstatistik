@@ -6,18 +6,18 @@ import { resetPasswordSchema } from '@/lib/validations/user';
 import bcrypt from 'bcrypt';
 
 // PUT /api/users/[id]/password - Återställ lösenord
-export const PUT = withRole<{ params: Promise<{ id: string }> }>(
+export const PUT = withRole(
   [UserRole.ADMIN],
   async (request, user, context) => {
     try {
-      const { id } = await context!.params;
+      const { id } = await (context as { params: Promise<{ id: string }> }).params;
       const body = await request.json();
 
       // Validate input
       const validation = resetPasswordSchema.safeParse(body);
 
       if (!validation.success) {
-        const errors = validation.error.errors.map((err) => ({
+        const errors = validation.error.issues.map((err) => ({
           field: err.path.join('.'),
           message: err.message,
         }));

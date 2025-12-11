@@ -211,14 +211,14 @@ export default function CalendarView({ meetings }: CalendarViewProps) {
                   <Badge
                     variant={
                       selectedEvent.resource.status === 'COMPLETED'
-                        ? 'success'
+                        ? 'completed'
                         : selectedEvent.resource.status === 'BOOKED'
-                        ? 'info'
+                        ? 'booked'
                         : selectedEvent.resource.status === 'NO_SHOW'
-                        ? 'warning'
+                        ? 'no-show'
                         : selectedEvent.resource.status === 'CANCELED'
-                        ? 'error'
-                        : 'neutral'
+                        ? 'canceled'
+                        : 'rescheduled'
                     }
                     size="lg"
                   >
