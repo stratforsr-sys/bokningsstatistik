@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import MultiSelect, { MultiSelectOption } from '@/components/ui/multi-select';
-import { useUsers } from '@/lib/hooks/use-users';
+import { useAvailableUsers } from '@/lib/hooks/use-users';
 import { UserRole } from '@prisma/client';
 
 export interface UserMultiSelectProps {
@@ -40,8 +40,8 @@ export default function UserMultiSelect({
   showInactive = false,
   className,
 }: UserMultiSelectProps) {
-  // Fetch users with the useUsers hook
-  const { users: usersData, loading, error: fetchError } = useUsers();
+  // ✅ Fetch users with the useAvailableUsers hook (accessible by all roles)
+  const { users: usersData, loading, error: fetchError } = useAvailableUsers();
 
   // Transform users to MultiSelect options
   const options = useMemo<MultiSelectOption[]>(() => {

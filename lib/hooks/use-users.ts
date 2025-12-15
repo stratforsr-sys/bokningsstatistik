@@ -27,7 +27,8 @@ export interface UsersFilters {
 // Fetcher function
 const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then((res) => res.json());
 
-// useUsers - Lista användare med filters
+// useUsers - Lista användare med filters (ADMIN endpoint)
+// For user management page (admin only)
 export function useUsers(filters?: UsersFilters) {
   const params = new URLSearchParams();
 
@@ -45,6 +46,33 @@ export function useUsers(filters?: UsersFilters) {
 
   const { data, error, mutate } = useSWR(
     `/api/users?${params.toString()}`,
+    fetcher
+  );
+
+  return {
+    users: (data?.users as User[]) || [],
+    count: data?.count || 0,
+    loading: !data && !error,
+    error: error || data?.error,
+    mutate,
+  };
+}
+
+// useAvailableUsers - Lista tillgängliga användare för val (accessible by all roles)
+// Used for booker/seller selection in meetings
+export function useAvailableUsers(filters?: Omit<UsersFilters, 'isActive'>) {
+  const params = new URLSearchParams();
+
+  if (filters?.query) {
+    params.set('query', filters.query);
+  }
+
+  if (filters?.role && filters.role !== 'ALL') {
+    params.set('role', filters.role);
+  }
+
+  const { data, error, mutate } = useSWR(
+    `/api/users/available?${params.toString()}`,
     fetcher
   );
 
