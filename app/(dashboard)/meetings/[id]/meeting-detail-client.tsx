@@ -105,6 +105,9 @@ export default function MeetingDetailClient({ meetingId }: MeetingDetailClientPr
                     notes: meeting.notes || '',
                     qualityScore: meeting.qualityScore,
                     outlookLink: meeting.outlookLink || '',
+                    // ✅ NEW: Include bookerIds and sellerIds for editing
+                    bookerIds: meeting.bookers?.map((b: any) => b.userId) || [],
+                    sellerIds: meeting.sellers?.map((s: any) => s.userId) || [],
                   }}
                   onSubmit={handleUpdate}
                   onCancel={() => setIsEditing(false)}
