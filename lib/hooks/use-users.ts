@@ -25,7 +25,7 @@ export interface UsersFilters {
 }
 
 // Fetcher function
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then((res) => res.json());
 
 // useUsers - Lista användare med filters
 export function useUsers(filters?: UsersFilters) {

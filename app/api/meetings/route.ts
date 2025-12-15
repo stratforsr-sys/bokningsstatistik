@@ -8,8 +8,16 @@ import { MeetingStatus, UserRole } from '@prisma/client';
  * GET /api/meetings
  * Hämtar möten med rollbaserad filtrering
  *
- * - USER: Ser endast möten där hen är owner eller booker
+ * - USER: Ser endast möten där hen är owner/booker eller seller/booker i nya relationer
  * - MANAGER/ADMIN: Ser alla möten
+ *
+ * Query params:
+ * - status: Filter by meeting status
+ * - startDate, endDate: Date range filter
+ * - query: Search in subject, email, notes
+ * - bookerIds: Comma-separated user IDs to filter by bookers
+ * - sellerIds: Comma-separated user IDs to filter by sellers
+ * - limit, offset: Pagination
  */
 export const GET = withAuth(async (request, user) => {
   try {
@@ -18,6 +26,8 @@ export const GET = withAuth(async (request, user) => {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const query = searchParams.get('query') || searchParams.get('q');
+    const bookerIds = searchParams.get('bookerIds'); // NEW: Filter by multiple bookers
+    const sellerIds = searchParams.get('sellerIds'); // NEW: Filter by multiple sellers
     const limit = parseInt(searchParams.get('limit') || '100', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
@@ -43,6 +53,26 @@ export const GET = withAuth(async (request, user) => {
       }
     }
 
+    // NEW: Filter by multiple bookers
+    if (bookerIds) {
+      const ids = bookerIds.split(',').map((id) => id.trim());
+      where.bookers = {
+        some: {
+          userId: { in: ids },
+        },
+      };
+    }
+
+    // NEW: Filter by multiple sellers
+    if (sellerIds) {
+      const ids = sellerIds.split(',').map((id) => id.trim());
+      where.sellers = {
+        some: {
+          userId: { in: ids },
+        },
+      };
+    }
+
     if (query) {
       where.OR = [
         { subject: { contains: query, mode: 'insensitive' } },
@@ -54,6 +84,7 @@ export const GET = withAuth(async (request, user) => {
     const meetings = await prisma.meeting.findMany({
       where,
       include: {
+        // OLD RELATIONS (deprecated but kept for backward compatibility)
         booker: {
           select: {
             id: true,
@@ -68,6 +99,39 @@ export const GET = withAuth(async (request, user) => {
             name: true,
             email: true,
             role: true,
+          },
+        },
+        // NEW RELATIONS (many-to-many)
+        bookers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                isActive: true,
+              },
+            },
+          },
+          orderBy: {
+            assignedAt: 'asc',
+          },
+        },
+        sellers: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                isActive: true,
+              },
+            },
+          },
+          orderBy: {
+            assignedAt: 'asc',
           },
         },
       },
@@ -98,6 +162,8 @@ export const GET = withAuth(async (request, user) => {
 /**
  * POST /api/meetings
  * Skapar ett nytt möte manuellt
+ *
+ * Supports both old (single bookerId/ownerId) and new (arrays bookerIds/sellerIds) formats
  */
 export const POST = withAuth(async (request, user) => {
   try {
@@ -108,8 +174,12 @@ export const POST = withAuth(async (request, user) => {
       startTime,
       endTime,
       organizerEmail,
+      // OLD FORMAT (deprecated but supported for backward compatibility)
       bookerId,
       ownerId,
+      // NEW FORMAT (preferred)
+      bookerIds,
+      sellerIds,
       status = 'BOOKED',
       attendees,
       joinUrl,
@@ -129,6 +199,25 @@ export const POST = withAuth(async (request, user) => {
         { error: 'Missing required field: startTime' },
         { status: 400 }
       );
+    }
+
+    // Determine which format is being used
+    const useNewFormat = bookerIds !== undefined || sellerIds !== undefined;
+
+    // Validate that at least one booker and seller is provided
+    if (useNewFormat) {
+      if (!bookerIds || !Array.isArray(bookerIds) || bookerIds.length === 0) {
+        return NextResponse.json(
+          { error: 'At least one booker is required (bookerIds must be a non-empty array)' },
+          { status: 400 }
+        );
+      }
+      if (!sellerIds || !Array.isArray(sellerIds) || sellerIds.length === 0) {
+        return NextResponse.json(
+          { error: 'At least one seller is required (sellerIds must be a non-empty array)' },
+          { status: 400 }
+        );
+      }
     }
 
     // Sätt standardvärden och validera datum
@@ -152,7 +241,6 @@ export const POST = withAuth(async (request, user) => {
     let end: Date;
     if (endTime && endTime.trim() !== '') {
       end = new Date(endTime);
-      // Validera att endTime är ett giltigt datum
       if (isNaN(end.getTime())) {
         return NextResponse.json(
           {
@@ -164,74 +252,7 @@ export const POST = withAuth(async (request, user) => {
         );
       }
     } else {
-      end = new Date(start.getTime() + 60 * 60 * 1000); // +1 timme som default
-    }
-
-    // Skapa eller hämta system-användare om ingen bookerId anges
-    let finalBookerId = bookerId && bookerId.trim() !== '' ? bookerId.trim() : null;
-    let finalOwnerId = ownerId && ownerId.trim() !== '' ? ownerId.trim() : null;
-
-    // Om bookerId är null eller tom sträng, skapa/hämta system-användare
-    let bookerUser: { id: string; name: string } | null = null;
-    if (!finalBookerId) {
-      let systemUser = await prisma.user.findUnique({
-        where: { email: 'system@telink.se' },
-      });
-
-      if (!systemUser) {
-        systemUser = await prisma.user.create({
-          data: {
-            name: 'System',
-            email: 'system@telink.se',
-            role: UserRole.ADMIN,
-          },
-        });
-        console.log('✨ System-användare skapad för manuella möten');
-      }
-
-      finalBookerId = systemUser.id;
-      bookerUser = { id: systemUser.id, name: systemUser.name };
-    } else {
-      // Validera att bookerId faktiskt existerar
-      const bookerExists = await prisma.user.findUnique({
-        where: { id: finalBookerId },
-        select: { id: true, name: true },
-      });
-
-      if (!bookerExists) {
-        return NextResponse.json(
-          {
-            error: 'Invalid bookerId',
-            message: `User with ID "${finalBookerId}" does not exist. Please select a valid user or leave empty for system user.`,
-          },
-          { status: 400 }
-        );
-      }
-      bookerUser = bookerExists;
-    }
-
-    // Om ownerId inte anges, använd bookerId
-    let ownerUser: { id: string; name: string } | null = null;
-    if (!finalOwnerId) {
-      finalOwnerId = finalBookerId;
-      ownerUser = bookerUser;
-    } else {
-      // Validera att ownerId faktiskt existerar
-      const ownerExists = await prisma.user.findUnique({
-        where: { id: finalOwnerId },
-        select: { id: true, name: true },
-      });
-
-      if (!ownerExists) {
-        return NextResponse.json(
-          {
-            error: 'Invalid ownerId',
-            message: `User with ID "${finalOwnerId}" does not exist. Please select a valid user or leave empty.`,
-          },
-          { status: 400 }
-        );
-      }
-      ownerUser = ownerExists;
+      end = new Date(start.getTime() + 60 * 60 * 1000);
     }
 
     // Validera att starttid är före sluttid
@@ -260,42 +281,168 @@ export const POST = withAuth(async (request, user) => {
       );
     }
 
-    // Skapa mötet
-    const meeting = await prisma.meeting.create({
-      data: {
-        subject,
-        bookingDate: booking,
-        startTime: start,
-        endTime: end,
-        lastUpdated: now,
-        organizerEmail: organizerEmail || 'unknown@telink.se',
-        bookerId: finalBookerId,
-        bookerName: bookerUser!.name,
-        ownerId: finalOwnerId,
-        ownerName: ownerUser!.name,
-        status: status as MeetingStatus,
-        attendees: attendees ? JSON.stringify(attendees) : null,
-        joinUrl: joinUrl || null,
-        notes: notes || null,
-      },
-      include: {
-        booker: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
+    // Create meeting with junction records in a transaction
+    const meeting = await prisma.$transaction(async (tx) => {
+      // Determine final user IDs
+      let finalBookerIds: string[];
+      let finalSellerIds: string[];
+
+      if (useNewFormat) {
+        finalBookerIds = bookerIds;
+        finalSellerIds = sellerIds;
+      } else {
+        // OLD FORMAT: Convert single IDs to arrays
+        let finalBookerId = bookerId && bookerId.trim() !== '' ? bookerId.trim() : null;
+        let finalOwnerId = ownerId && ownerId.trim() !== '' ? ownerId.trim() : null;
+
+        // Create or get system user if no bookerId provided
+        if (!finalBookerId) {
+          let systemUser = await tx.user.findUnique({
+            where: { email: 'system@telink.se' },
+          });
+
+          if (!systemUser) {
+            systemUser = await tx.user.create({
+              data: {
+                name: 'System',
+                email: 'system@telink.se',
+                role: UserRole.ADMIN,
+              },
+            });
+            console.log('✨ System-användare skapad för manuella möten');
+          }
+          finalBookerId = systemUser.id;
+        }
+
+        // If no ownerId, use bookerId
+        if (!finalOwnerId) {
+          finalOwnerId = finalBookerId;
+        }
+
+        finalBookerIds = [finalBookerId];
+        finalSellerIds = [finalOwnerId];
+      }
+
+      // Validate that all user IDs exist and fetch user data
+      const bookerUsers = await tx.user.findMany({
+        where: { id: { in: finalBookerIds } },
+        select: { id: true, name: true },
+      });
+
+      if (bookerUsers.length !== finalBookerIds.length) {
+        const foundIds = bookerUsers.map((u) => u.id);
+        const missingIds = finalBookerIds.filter((id) => !foundIds.includes(id));
+        throw new Error(`Invalid booker ID(s): ${missingIds.join(', ')}`);
+      }
+
+      const sellerUsers = await tx.user.findMany({
+        where: { id: { in: finalSellerIds } },
+        select: { id: true, name: true },
+      });
+
+      if (sellerUsers.length !== finalSellerIds.length) {
+        const foundIds = sellerUsers.map((u) => u.id);
+        const missingIds = finalSellerIds.filter((id) => !foundIds.includes(id));
+        throw new Error(`Invalid seller ID(s): ${missingIds.join(', ')}`);
+      }
+
+      // For backward compatibility, set old fields to first booker/seller
+      const firstBooker = bookerUsers[0];
+      const firstSeller = sellerUsers[0];
+
+      // Create the meeting
+      const newMeeting = await tx.meeting.create({
+        data: {
+          subject,
+          bookingDate: booking,
+          startTime: start,
+          endTime: end,
+          lastUpdated: now,
+          organizerEmail: organizerEmail || 'unknown@telink.se',
+          // OLD FIELDS (for backward compatibility)
+          bookerId: firstBooker.id,
+          bookerName: firstBooker.name,
+          ownerId: firstSeller.id,
+          ownerName: firstSeller.name,
+          status: status as MeetingStatus,
+          attendees: attendees ? JSON.stringify(attendees) : null,
+          joinUrl: joinUrl || null,
+          notes: notes || null,
+        },
+      });
+
+      // Create booker junction records
+      await tx.meetingBooker.createMany({
+        data: bookerUsers.map((user) => ({
+          meetingId: newMeeting.id,
+          userId: user.id,
+          userName: user.name,
+        })),
+      });
+
+      // Create seller junction records
+      await tx.meetingSeller.createMany({
+        data: sellerUsers.map((user) => ({
+          meetingId: newMeeting.id,
+          userId: user.id,
+          userName: user.name,
+        })),
+      });
+
+      // Return meeting with includes
+      return await tx.meeting.findUnique({
+        where: { id: newMeeting.id },
+        include: {
+          booker: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+            },
+          },
+          owner: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+            },
+          },
+          bookers: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                  isActive: true,
+                },
+              },
+            },
+            orderBy: {
+              assignedAt: 'asc',
+            },
+          },
+          sellers: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true,
+                  isActive: true,
+                },
+              },
+            },
+            orderBy: {
+              assignedAt: 'asc',
+            },
           },
         },
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
+      });
     });
 
     return NextResponse.json(
@@ -309,12 +456,23 @@ export const POST = withAuth(async (request, user) => {
   } catch (error: any) {
     console.error('Error in POST /api/meetings:', error);
 
-    // Hantera databas-specifika fel
+    // Handle database-specific errors
     if (error.code === 'P2003') {
       return NextResponse.json(
         {
-          error: 'Invalid bookerId or ownerId',
-          message: 'The specified user(s) do not exist',
+          error: 'Invalid user ID(s)',
+          message: 'One or more specified users do not exist',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Handle duplicate assignment error
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        {
+          error: 'Duplicate assignment',
+          message: 'A user cannot be assigned to the same meeting multiple times',
         },
         { status: 400 }
       );

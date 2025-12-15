@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   useReactTable,
   getCoreRowModel,
@@ -62,11 +63,60 @@ const statusVariants: Record<string, 'booked' | 'completed' | 'no-show' | 'cance
 };
 
 export default function ListView({ meetings }: ListViewProps) {
+  const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'startTime', desc: true }
   ]);
   const { selectedIds, toggleSelect, isSelected } = useMeetingsStore();
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  const handleStatusUpdate = async (meetingId: string, status: string) => {
+    setStatusLoading(true);
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update');
+
+      setActionMenuOpen(null);
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      alert('Kunde inte uppdatera status. Försök igen.');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const handleDelete = async (meetingId: string) => {
+    if (!confirm('Är du säker på att du vill ta bort detta möte?')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!res.ok) throw new Error('Failed to delete');
+
+      setActionMenuOpen(null);
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to delete:', error);
+      alert('Kunde inte ta bort mötet. Försök igen.');
+    }
+  };
+
+  const handleEdit = (meetingId: string) => {
+    router.push(`/meetings/${meetingId}`);
+  };
 
   const columns = useMemo<ColumnDef<Meeting>[]>(
     () => [
@@ -240,20 +290,34 @@ export default function ListView({ meetings }: ListViewProps) {
             {actionMenuOpen === row.original.id && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                 <div className="py-1">
-                  <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                  <button
+                    onClick={() => handleEdit(row.original.id)}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                  >
                     <Edit className="h-4 w-4" />
                     Redigera
                   </button>
-                  <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                  <button
+                    onClick={() => handleStatusUpdate(row.original.id, 'COMPLETED')}
+                    disabled={statusLoading}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+                  >
                     <CheckCircle className="h-4 w-4 text-green-600" />
                     Markera som genomförd
                   </button>
-                  <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2">
+                  <button
+                    onClick={() => handleStatusUpdate(row.original.id, 'NO_SHOW')}
+                    disabled={statusLoading}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+                  >
                     <XCircle className="h-4 w-4 text-red-600" />
                     Markera som no-show
                   </button>
                   <div className="border-t border-gray-200 my-1"></div>
-                  <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600">
+                  <button
+                    onClick={() => handleDelete(row.original.id)}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                  >
                     <Trash2 className="h-4 w-4" />
                     Ta bort
                   </button>

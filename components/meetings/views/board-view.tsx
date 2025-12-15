@@ -9,6 +9,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -81,6 +82,58 @@ const COLUMNS = [
     badgeVariant: 'rescheduled' as const,
   },
 ];
+
+interface DroppableColumnProps {
+  column: typeof COLUMNS[0];
+  meetings: Meeting[];
+  activeDragId: string | null;
+}
+
+function DroppableColumn({ column, meetings, activeDragId }: DroppableColumnProps) {
+  const { setNodeRef } = useDroppable({
+    id: column.id,
+  });
+
+  return (
+    <SortableContext
+      id={column.id}
+      items={meetings.map((m) => m.id)}
+      strategy={verticalListSortingStrategy}
+    >
+      <div className="flex flex-col h-full min-h-[600px]">
+        {/* Column Header */}
+        <div className={`${column.color} ${column.borderColor} border-2 rounded-t-lg p-4`}>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-gray-900">{column.title}</h2>
+            <Badge variant={column.badgeVariant} size="sm">
+              {meetings.length}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Droppable Area */}
+        <div
+          ref={setNodeRef}
+          className={`flex-1 ${column.color} ${column.borderColor} border-x-2 border-b-2 rounded-b-lg p-3 space-y-3 overflow-y-auto`}
+        >
+          {meetings.length === 0 ? (
+            <div className="text-center text-gray-400 text-sm py-8">
+              Inga möten
+            </div>
+          ) : (
+            meetings.map((meeting) => (
+              <MeetingCard
+                key={meeting.id}
+                meeting={meeting}
+                isDragging={meeting.id === activeDragId}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    </SortableContext>
+  );
+}
 
 interface MeetingCardProps {
   meeting: Meeting;
@@ -270,43 +323,12 @@ export default function BoardView({ meetings }: BoardViewProps) {
             const columnMeetings = meetingsByStatus[column.id] || [];
 
             return (
-              <SortableContext
+              <DroppableColumn
                 key={column.id}
-                id={column.id}
-                items={columnMeetings.map((m) => m.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="flex flex-col h-full min-h-[600px]">
-                  {/* Column Header */}
-                  <div className={`${column.color} ${column.borderColor} border-2 rounded-t-lg p-4`}>
-                    <div className="flex items-center justify-between">
-                      <h2 className="font-semibold text-gray-900">{column.title}</h2>
-                      <Badge variant={column.badgeVariant} size="sm">
-                        {columnMeetings.length}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Droppable Area */}
-                  <div
-                    className={`flex-1 ${column.color} ${column.borderColor} border-x-2 border-b-2 rounded-b-lg p-3 space-y-3 overflow-y-auto`}
-                  >
-                    {columnMeetings.length === 0 ? (
-                      <div className="text-center text-gray-400 text-sm py-8">
-                        Inga möten
-                      </div>
-                    ) : (
-                      columnMeetings.map((meeting) => (
-                        <MeetingCard
-                          key={meeting.id}
-                          meeting={meeting}
-                          isDragging={meeting.id === activeDragId}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-              </SortableContext>
+                column={column}
+                meetings={columnMeetings}
+                activeDragId={activeDragId}
+              />
             );
           })}
         </div>

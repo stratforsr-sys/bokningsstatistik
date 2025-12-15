@@ -9,13 +9,16 @@ import Select from '@/components/ui/select';
 import DatePicker from '@/components/ui/date-picker';
 import Button from '@/components/ui/button';
 import QualityScoreInput from './quality-score-input';
+import UserMultiSelect from '@/components/users/user-multi-select';
 
 const meetingSchema = z
   .object({
     subject: z.string().min(1, 'Ämne krävs').max(200, 'Ämne får vara max 200 tecken'),
     startTime: z.date({ message: 'Starttid krävs' }),
     endTime: z.date({ message: 'Sluttid krävs' }),
-    ownerId: z.string().optional(),
+    // NEW: Multiple bookers and sellers
+    bookerIds: z.array(z.string()).min(1, 'Minst en bokare krävs'),
+    sellerIds: z.array(z.string()).min(1, 'Minst en säljare krävs'),
     status: z.enum(['BOOKED', 'COMPLETED', 'NO_SHOW', 'CANCELED', 'RESCHEDULED']),
     notes: z.string().max(1000, 'Anteckningar får vara max 1000 tecken').optional(),
     qualityScore: z.number().min(1).max(5).nullable().optional(),
@@ -63,7 +66,8 @@ export default function MeetingForm({
       subject: initialData?.subject || '',
       startTime: initialData?.startTime || new Date(),
       endTime: initialData?.endTime || new Date(Date.now() + 60 * 60 * 1000), // 1 hour later
-      ownerId: initialData?.ownerId || undefined,
+      bookerIds: initialData?.bookerIds || [],
+      sellerIds: initialData?.sellerIds || [],
       status: initialData?.status || 'BOOKED',
       notes: initialData?.notes || '',
       qualityScore: initialData?.qualityScore || null,
@@ -116,6 +120,40 @@ export default function MeetingForm({
           )}
         />
       </div>
+
+      {/* Bookers - NEW: Multi-select for bookers */}
+      <Controller
+        name="bookerIds"
+        control={control}
+        render={({ field }) => (
+          <UserMultiSelect
+            label="Bokare"
+            value={field.value}
+            onChange={field.onChange}
+            required
+            error={errors.bookerIds?.message}
+            helperText="Välj en eller flera personer som har bokat mötet"
+            placeholder="Välj bokare..."
+          />
+        )}
+      />
+
+      {/* Sellers - NEW: Multi-select for sellers */}
+      <Controller
+        name="sellerIds"
+        control={control}
+        render={({ field }) => (
+          <UserMultiSelect
+            label="Säljare"
+            value={field.value}
+            onChange={field.onChange}
+            required
+            error={errors.sellerIds?.message}
+            helperText="Välj en eller flera säljare för mötet"
+            placeholder="Välj säljare..."
+          />
+        )}
+      />
 
       {/* Status */}
       <Controller

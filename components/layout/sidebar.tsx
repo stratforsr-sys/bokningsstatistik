@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Home, Calendar, Users, LogOut, Loader2 } from 'lucide-react';
+import { Home, Calendar, Users, LogOut, Loader2, BarChart3 } from 'lucide-react';
 import { useLayoutStore } from '@/lib/stores/layout-store';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { JWTPayload } from '@/lib/auth/jwt';
@@ -19,6 +19,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: Home },
   { path: '/meetings', label: 'Möten', icon: Calendar },
+  { path: '/stats', label: 'Statistik', icon: BarChart3 },
   { path: '/users', label: 'Användare', icon: Users, adminOnly: true },
 ];
 

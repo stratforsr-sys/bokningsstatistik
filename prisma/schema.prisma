@@ -13,18 +13,18 @@ datasource db {
 
 // Enum för användarroller
 enum UserRole {
-  USER     // Vanlig användare - kan bara se och ändra sina egna möten
-  MANAGER  // Manager - kan hantera möten/statistik men inte användare
-  ADMIN    // Administratör - full behörighet
+  USER // Vanlig användare - kan bara se och ändra sina egna möten
+  MANAGER // Manager - kan hantera möten/statistik men inte användare
+  ADMIN // Administratör - full behörighet
 }
 
 // Enum för mötesstatus
 enum MeetingStatus {
-  BOOKED       // Mötet är bokat och ännu inte hållits
-  COMPLETED    // Mötet har hållits (kunden dök upp)
-  NO_SHOW      // Kunden dök inte upp
-  CANCELED     // Mötet avbokades, ingen ny tid sattes
-  RESCHEDULED  // Mötet ombokades till ny tid
+  BOOKED // Mötet är bokat och ännu inte hållits
+  COMPLETED // Mötet har hållits (kunden dök upp)
+  NO_SHOW // Kunden dök inte upp
+  CANCELED // Mötet avbokades, ingen ny tid sattes
+  RESCHEDULED // Mötet ombokades till ny tid
 }
 
 // Enum för status-orsaker
@@ -65,10 +65,15 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Relationer
-  bookedMeetings Meeting[]     @relation("BookedBy")
-  ownedMeetings  Meeting[]     @relation("OwnedBy")
-  userTokens     UserToken[]
+  // OLD RELATIONS (deprecated but kept for migration)
+  bookedMeetings Meeting[] @relation("BookedBy")
+  ownedMeetings  Meeting[] @relation("OwnedBy")
+
+  // NEW RELATIONS (many-to-many)
+  bookerAssignments MeetingBooker[] @relation("BookerAssignments")
+  sellerAssignments MeetingSeller[] @relation("SellerAssignments")
+
+  userTokens UserToken[]
 }
 
 // Tabell för att spara OAuth tokens per användare
@@ -88,39 +93,45 @@ model UserToken {
 
 // Huvudtabell för möten
 model Meeting {
-  id               String        @id @default(uuid())
-  outlookEventId   String?       @unique // Outlook/Teams event ID (nullable för manuella möten)
+  id             String  @id @default(uuid())
+  outlookEventId String? @unique // Outlook/Teams event ID (nullable för manuella möten)
 
   // Tidsinformation
-  bookingDate      DateTime      // När mötet bokades
-  startTime        DateTime      // Start-tid för mötet
-  endTime          DateTime      // Slut-tid för mötet
-  lastUpdated      DateTime      @updatedAt
+  bookingDate DateTime // När mötet bokades
+  startTime   DateTime // Start-tid för mötet
+  endTime     DateTime // Slut-tid för mötet
+  lastUpdated DateTime @updatedAt
 
   // Mötesdetaljer
-  subject          String?       // Mötesämne från Outlook
-  organizerEmail   String        // Vem som är organisatör
-  attendees        String?       @db.Text // JSON-array med deltagare
-  joinUrl          String?       @db.Text // Teams-länk
-  bodyPreview      String?       @db.Text // Förhandsgranskning av mötesinnehåll
+  subject        String? // Mötesämne från Outlook
+  organizerEmail String // Vem som är organisatör
+  attendees      String? @db.Text // JSON-array med deltagare
+  joinUrl        String? @db.Text // Teams-länk
+  bodyPreview    String? @db.Text // Förhandsgranskning av mötesinnehåll
 
+  // OLD FIELDS (deprecated but kept for migration)
   // Ägarskap (med namn lagrade för att möjliggöra borttagning av användare)
-  bookerId         String?       // Vem som bokade mötet (nullable om användaren tagits bort)
-  bookerName       String        @map("booker_name") // Namn på bokaren (behålls även om användaren tas bort)
-  ownerId          String?       // Säljaren som ska ha mötet (nullable om användaren tagits bort)
-  ownerName        String        @map("owner_name") // Namn på ägaren (behålls även om användaren tas bort)
+  bookerId   String? // Vem som bokade mötet (nullable om användaren tagits bort)
+  bookerName String  @map("booker_name") // Namn på bokaren (behålls även om användaren tas bort)
+  ownerId    String? // Säljaren som ska ha mötet (nullable om användaren tagits bort)
+  ownerName  String  @map("owner_name") // Namn på ägaren (behålls även om användaren tas bort)
 
   // Status och kvalitet
-  status           MeetingStatus @default(BOOKED)
-  statusReason     StatusReason?
-  qualityScore     Int?          // 1-5, endast för COMPLETED möten
-  notes            String?       @db.Text // Interna anteckningar
+  status       MeetingStatus @default(BOOKED)
+  statusReason StatusReason?
+  qualityScore Int? // 1-5, endast för COMPLETED möten
+  notes        String?       @db.Text // Interna anteckningar
 
-  createdAt        DateTime      @default(now())
+  createdAt DateTime @default(now())
 
+  // OLD RELATIONS (deprecated but kept for migration)
   // Relationer (onDelete: SetNull gör att mötet behålls när användaren tas bort)
-  booker           User?         @relation("BookedBy", fields: [bookerId], references: [id], onDelete: SetNull)
-  owner            User?         @relation("OwnedBy", fields: [ownerId], references: [id], onDelete: SetNull)
+  booker User? @relation("BookedBy", fields: [bookerId], references: [id], onDelete: SetNull)
+  owner  User? @relation("OwnedBy", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  // NEW RELATIONS (many-to-many)
+  bookers MeetingBooker[] @relation("MeetingBookers")
+  sellers MeetingSeller[] @relation("MeetingSellers")
 
   @@index([bookerId])
   @@index([ownerId])
@@ -133,7 +144,7 @@ model Meeting {
 model UserInvite {
   id         String    @id @default(uuid())
   email      String
-  role       UserRole  // Vilken roll den nya användaren ska få
+  role       UserRole // Vilken roll den nya användaren ska få
   tokenHash  String    @map("token_hash") @db.Text // Hash av invite-token
   expiresAt  DateTime  @map("expires_at") // När inviten går ut (t.ex. +7 dagar)
   acceptedAt DateTime? @map("accepted_at") // När inviten accepterades (null = ej accepterad)
@@ -142,4 +153,42 @@ model UserInvite {
   @@index([email])
   @@index([tokenHash])
   @@index([expiresAt])
+}
+
+// Junction table för meeting bookers (många-till-många)
+// Möjliggör flera bokare per möte
+model MeetingBooker {
+  id         String   @id @default(uuid())
+  meetingId  String   @map("meeting_id")
+  userId     String   @map("user_id")
+  userName   String   @map("user_name") // Redundant storage för historisk data
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  meeting Meeting @relation("MeetingBookers", fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation("BookerAssignments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+  @@index([userId])
+  @@index([userId, assignedAt])
+  @@map("meeting_bookers")
+}
+
+// Junction table för meeting sellers/owners (många-till-många)
+// Möjliggör flera säljare per möte
+model MeetingSeller {
+  id         String   @id @default(uuid())
+  meetingId  String   @map("meeting_id")
+  userId     String   @map("user_id")
+  userName   String   @map("user_name") // Redundant storage för historisk data
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  meeting Meeting @relation("MeetingSellers", fields: [meetingId], references: [id], onDelete: Cascade)
+  user    User    @relation("SellerAssignments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+  @@index([userId])
+  @@index([userId, assignedAt])
+  @@map("meeting_sellers")
 }

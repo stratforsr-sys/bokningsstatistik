@@ -8,7 +8,7 @@ interface BadgeProps {
     | 'user'
     | 'manager'
     | 'admin';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   children: React.ReactNode;
   className?: string;
 }
@@ -35,6 +35,7 @@ export default function Badge({
   };
 
   const sizeClasses = {
+    xs: 'text-xs px-1.5 py-0.5',
     sm: 'text-xs px-2 py-0.5',
     md: 'text-sm px-2.5 py-1',
     lg: 'text-base px-3 py-1.5',
