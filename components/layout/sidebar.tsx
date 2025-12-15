@@ -14,12 +14,13 @@ interface MenuItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
+  hideForRoles?: string[];
 }
 
 const menuItems: MenuItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: Home },
   { path: '/meetings', label: 'Möten', icon: Calendar },
-  { path: '/stats', label: 'Statistik', icon: BarChart3 },
+  { path: '/stats', label: 'Statistik', icon: BarChart3, hideForRoles: ['USER'] },
   { path: '/users', label: 'Användare', icon: Users, adminOnly: true },
 ];
 
@@ -57,7 +58,9 @@ export default function Sidebar({ user }: SidebarProps) {
 
   // Filter menu items baserat på användarens roll
   const visibleMenuItems = menuItems.filter(
-    (item) => !item.adminOnly || user.role === 'ADMIN'
+    (item) =>
+      (!item.adminOnly || user.role === 'ADMIN') &&
+      (!item.hideForRoles || !item.hideForRoles.includes(user.role))
   );
 
   return (

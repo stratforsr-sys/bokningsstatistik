@@ -5,11 +5,15 @@ import { statsService } from '@/lib/services/stats-service';
 /**
  * GET /api/stats/trends
  * Hämtar trenddata över tid
+ *
+ * ✅ UPDATED: Now includes role-based access control
+ * - USER role: Can only view their own trends
+ * - ADMIN/MANAGER: Can view all trends or filter by userId
  */
 export const GET = withAuth(async (request, user) => {
   try {
     const { searchParams } = request.nextUrl;
-    const userId = searchParams.get('userId') || searchParams.get('user_id');
+    const requestedUserId = searchParams.get('userId') || searchParams.get('user_id');
     const days = searchParams.get('days') || '30';
 
     const daysNum = parseInt(days, 10);
@@ -24,7 +28,26 @@ export const GET = withAuth(async (request, user) => {
       );
     }
 
-    const trends = await statsService.getTrends(userId || undefined, daysNum);
+    // ✅ SECURITY: Enforce access control for USER role
+    if (user.role === 'USER') {
+      if (requestedUserId && requestedUserId !== user.sub) {
+        return NextResponse.json(
+          {
+            error: 'Forbidden',
+            message: 'You can only view your own trends',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    // ✅ For USER role, force their own ID
+    const targetUserId = user.role === 'USER' ? user.sub : (requestedUserId || undefined);
+
+    // ✅ Pass requestUser for ownership filtering
+    const requestUser = { id: user.sub, role: user.role };
+
+    const trends = await statsService.getTrends(targetUserId, daysNum, requestUser);
 
     return NextResponse.json({
       success: true,

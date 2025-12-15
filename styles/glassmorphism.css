@@ -1,0 +1,256 @@
+/**
+ * Glassmorphism Design System
+ * Soft glassmorphism inspired by macOS Big Sur
+ *
+ * Design Principles:
+ * - Semi-transparent backgrounds (0.7 alpha)
+ * - 12px backdrop blur (optimal for cards)
+ * - Subtle borders with brand color tint
+ * - Multi-layer shadows for depth
+ * - Smooth transitions
+ */
+
+/* ============================================
+   BASE GLASS EFFECT
+   ============================================ */
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ============================================
+   GLASS CARD (with padding and rounded corners)
+   ============================================ */
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 1rem; /* 16px */
+  padding: 1.5rem; /* 24px */
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow:
+    0 8px 12px rgba(0, 0, 0, 0.08),
+    0 16px 40px rgba(139, 92, 246, 0.12);
+}
+
+/* ============================================
+   GLASS VARIANTS
+   ============================================ */
+
+/* Subtle glass - lighter effect */
+.glass-subtle {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Strong glass - more opaque */
+.glass-strong {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  box-shadow:
+    0 6px 8px rgba(0, 0, 0, 0.06),
+    0 12px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   GLASS WITH GRADIENT (for headers)
+   ============================================ */
+
+.glass-gradient {
+  background: linear-gradient(
+    135deg,
+    rgba(100, 79, 247, 0.4) 0%,
+    rgba(139, 92, 246, 0.4) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.05),
+    0 8px 24px rgba(100, 79, 247, 0.15);
+}
+
+/* ============================================
+   STAT CARD WITH GLASS EFFECT
+   ============================================ */
+
+.glass-stat-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #644ff7, #8b5cf6);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.glass-stat-card:hover::before {
+  opacity: 1;
+}
+
+.glass-stat-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow:
+    0 8px 12px rgba(0, 0, 0, 0.08),
+    0 20px 48px rgba(139, 92, 246, 0.15);
+}
+
+/* ============================================
+   LEADERBOARD GLASS STYLING
+   ============================================ */
+
+.glass-leaderboard {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.glass-leaderboard-header {
+  background: linear-gradient(
+    135deg,
+    rgba(100, 79, 247, 0.4) 0%,
+    rgba(139, 92, 246, 0.4) 100%
+  );
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-leaderboard-row {
+  background: transparent;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.08);
+}
+
+.glass-leaderboard-row:hover {
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.glass-leaderboard-row:last-child {
+  border-bottom: none;
+}
+
+/* ============================================
+   BROWSER SUPPORT FALLBACK
+   ============================================ */
+
+@supports not ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
+  .glass,
+  .glass-card,
+  .glass-subtle,
+  .glass-strong,
+  .glass-gradient,
+  .glass-stat-card,
+  .glass-leaderboard {
+    /* Fallback for browsers without backdrop-filter support */
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow:
+      0 4px 6px rgba(0, 0, 0, 0.1),
+      0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 768px) {
+  /* Reduce blur on mobile for better performance */
+  .glass,
+  .glass-card,
+  .glass-stat-card,
+  .glass-leaderboard {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .glass-card:hover,
+  .glass-stat-card:hover {
+    /* Reduce hover lift on mobile */
+    transform: translateY(-1px);
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Glass overlay for modals/dropdowns */
+.glass-overlay {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Glass button */
+.glass-button {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.2s ease;
+}
+
+.glass-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Glass divider */
+.glass-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(139, 92, 246, 0) 0%,
+    rgba(139, 92, 246, 0.2) 50%,
+    rgba(139, 92, 246, 0) 100%
+  );
+}

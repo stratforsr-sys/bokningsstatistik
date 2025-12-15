@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { verifyToken } from './lib/auth/jwt';
 
 // Sökvägar som kräver autentisering
-const protectedPaths = ['/dashboard', '/meetings', '/users'];
+const protectedPaths = ['/dashboard', '/meetings', '/users', '/stats'];
 
 // Sökvägar för autentisering (inloggade användare redirectas bort från dessa)
 const authPaths = ['/login', '/invite/complete'];
@@ -33,6 +33,11 @@ export async function middleware(request: NextRequest) {
 
     // Role-based access control for /users (ADMIN only)
     if (path.startsWith('/users') && payload.role !== 'ADMIN') {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    // Role-based access control for /stats (USER role blocked)
+    if (path.startsWith('/stats') && payload.role === 'USER') {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }

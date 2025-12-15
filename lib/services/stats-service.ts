@@ -7,12 +7,14 @@ import {
   startOfMonth,
   endOfMonth,
 } from 'date-fns';
+import { getStatsFilterForUser } from '@/lib/utils/ownership';
 
 export interface StatsQuery {
   userId?: string;
   period: 'today' | 'week' | 'month' | 'total';
   startDate?: Date;
   endDate?: Date;
+  requestUser?: { id: string; role: string }; // NEW: For access control
 }
 
 export interface StatsResponse {
@@ -75,23 +77,26 @@ export class StatsService {
 
   /**
    * Huvudfunktion för att beräkna statistik
+   * ✅ UPDATED: Now uses ownership filters and supports many-to-many relations
    */
   async getStats(query: StatsQuery): Promise<StatsResponse> {
     const dateRange = this.getDateRange(query.period, query.startDate, query.endDate);
 
-    const whereBooking: any = {};
-    const whereMeeting: any = {};
+    // ✅ Use ownership filter if requestUser is provided (for access control)
+    const ownershipFilter = query.requestUser
+      ? getStatsFilterForUser(query.requestUser.id, query.requestUser.role, query.userId)
+      : query.userId
+      ? {
+          OR: [
+            { bookerId: query.userId }, // OLD field for backward compatibility
+            { bookers: { some: { userId: query.userId } } }, // NEW many-to-many
+          ],
+        }
+      : {};
 
-    if (query.userId) {
-      whereBooking.bookerId = query.userId;
-      whereMeeting.bookerId = query.userId;
-    }
-
-    // Räkna bokningar per period
-    const dagens_bokningar = await this.countBookings(query.userId, 'today');
-    const veckans_bokningar = await this.countBookings(query.userId, 'week');
-    const manadens_bokningar = await this.countBookings(query.userId, 'month');
-    const total_bokningar = await this.countBookings(query.userId, 'total');
+    const whereMeeting: any = {
+      ...ownershipFilter,
+    };
 
     if (dateRange) {
       whereMeeting.startTime = {
@@ -99,6 +104,12 @@ export class StatsService {
         lte: dateRange.end,
       };
     }
+
+    // Räkna bokningar per period (using new ownership-aware method)
+    const dagens_bokningar = await this.countBookings(query.userId, 'today', query.requestUser);
+    const veckans_bokningar = await this.countBookings(query.userId, 'week', query.requestUser);
+    const manadens_bokningar = await this.countBookings(query.userId, 'month', query.requestUser);
+    const total_bokningar = await this.countBookings(query.userId, 'total', query.requestUser);
 
     // Räkna per status
     const [avbokningar, ombokningar, noshows, genomforda] = await Promise.all([
@@ -115,7 +126,8 @@ export class StatsService {
     const kvalitet_genomsnitt = await this.calculateAverageQuality(
       query.userId,
       dateRange?.start,
-      dateRange?.end
+      dateRange?.end,
+      query.requestUser
     );
 
     return {
@@ -137,16 +149,28 @@ export class StatsService {
 
   /**
    * Räknar bokningar baserat på bookingDate
+   * ✅ UPDATED: Now uses ownership filters and supports many-to-many relations
    */
   private async countBookings(
     userId?: string,
-    period?: 'today' | 'week' | 'month' | 'total'
+    period?: 'today' | 'week' | 'month' | 'total',
+    requestUser?: { id: string; role: string }
   ): Promise<number> {
-    const where: any = {};
+    // ✅ Use ownership filter if requestUser is provided
+    const ownershipFilter = requestUser
+      ? getStatsFilterForUser(requestUser.id, requestUser.role, userId)
+      : userId
+      ? {
+          OR: [
+            { bookerId: userId }, // OLD field for backward compatibility
+            { bookers: { some: { userId } } }, // NEW many-to-many
+          ],
+        }
+      : {};
 
-    if (userId) {
-      where.bookerId = userId;
-    }
+    const where: any = {
+      ...ownershipFilter,
+    };
 
     if (period && period !== 'total') {
       const dateRange = this.getDateRange(period);
@@ -163,20 +187,31 @@ export class StatsService {
 
   /**
    * Beräknar genomsnittlig kvalitetspoäng
+   * ✅ UPDATED: Now uses ownership filters and supports many-to-many relations
    */
   private async calculateAverageQuality(
     userId?: string,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
+    requestUser?: { id: string; role: string }
   ): Promise<number> {
+    // ✅ Use ownership filter if requestUser is provided
+    const ownershipFilter = requestUser
+      ? getStatsFilterForUser(requestUser.id, requestUser.role, userId)
+      : userId
+      ? {
+          OR: [
+            { bookerId: userId }, // OLD field for backward compatibility
+            { bookers: { some: { userId } } }, // NEW many-to-many
+          ],
+        }
+      : {};
+
     const where: any = {
+      ...ownershipFilter,
       status: 'COMPLETED',
       qualityScore: { not: null },
     };
-
-    if (userId) {
-      where.bookerId = userId;
-    }
 
     if (startDate && endDate) {
       where.startTime = {
@@ -235,22 +270,33 @@ export class StatsService {
 
   /**
    * Hämtar trenddata över tid
+   * ✅ UPDATED: Now uses ownership filters and supports many-to-many relations
    */
   async getTrends(
     userId?: string,
-    days: number = 30
+    days: number = 30,
+    requestUser?: { id: string; role: string }
   ): Promise<Array<{ date: string; bokningar: number; genomforda: number; noshows: number }>> {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
+    // ✅ Use ownership filter if requestUser is provided
+    const ownershipFilter = requestUser
+      ? getStatsFilterForUser(requestUser.id, requestUser.role, userId)
+      : userId
+      ? {
+          OR: [
+            { bookerId: userId }, // OLD field for backward compatibility
+            { bookers: { some: { userId } } }, // NEW many-to-many
+          ],
+        }
+      : {};
+
     const where: any = {
+      ...ownershipFilter,
       startTime: { gte: startDate, lte: endDate },
     };
-
-    if (userId) {
-      where.bookerId = userId;
-    }
 
     const meetings = await prisma.meeting.findMany({
       where,

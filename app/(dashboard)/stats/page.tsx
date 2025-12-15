@@ -11,6 +11,11 @@ export default async function StatsPage() {
   try {
     const user = await requireAuth();
 
+    // ✅ SECURITY: Redirect USER role to dashboard
+    if (user.role === 'USER') {
+      redirect('/dashboard');
+    }
+
     return <StatsClient user={user} />;
   } catch (error) {
     // User not authenticated

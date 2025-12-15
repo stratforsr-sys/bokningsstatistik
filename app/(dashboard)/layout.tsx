@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { verifyToken } from '@/lib/auth/jwt';
 import DashboardLayout from '@/components/layout/dashboard-layout';
+import '@/styles/glassmorphism.css';
 
 export default async function Layout({
   children,

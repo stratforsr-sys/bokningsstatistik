@@ -1,5 +1,21 @@
 import useSWR from 'swr';
 
+export interface ComparisonData {
+  personal: {
+    showRate: number;
+    quality: number;
+    totalMeetings: number;
+    completed: number;
+    noShows: number;
+  };
+  teamAverage: {
+    showRate: number;
+    quality: number;
+    totalMeetings: number;
+  };
+  totalUsers: number;
+}
+
 interface StatsResponse {
   success: boolean;
   overview: {
@@ -9,6 +25,7 @@ interface StatsResponse {
     total: StatsPeriod;
     trends: TrendData[];
   };
+  comparison?: ComparisonData; // Only for USER role
 }
 
 interface StatsPeriod {
@@ -66,6 +83,7 @@ export function useStats() {
 
   return {
     stats: data?.overview,
+    comparison: data?.comparison, // Team comparison data (USER role only)
     loading: isLoading,
     error: error?.message,
     mutate,
