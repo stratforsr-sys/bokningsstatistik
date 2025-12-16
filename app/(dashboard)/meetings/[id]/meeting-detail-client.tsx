@@ -37,7 +37,7 @@ export default function MeetingDetailClient({ meetingId }: MeetingDetailClientPr
 
   const handleDelete = async () => {
     try {
-      await deleteMeeting(meetingId);
+      await deleteMeeting(meetingId, true); // true = permanent deletion (hard delete)
       router.push('/meetings');
     } catch (err) {
       console.error('Failed to delete meeting:', err);
@@ -126,12 +126,20 @@ export default function MeetingDetailClient({ meetingId }: MeetingDetailClientPr
       <Modal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        title="Ta bort möte"
+        title="Ta bort möte permanent"
         size="sm"
       >
-        <p className="text-sm text-gray-600">
-          Är du säker på att du vill ta bort detta möte? Denna åtgärd kan inte ångras.
-        </p>
+        <div className="space-y-3">
+          <p className="text-sm text-gray-900 font-medium">
+            Är du säker på att du vill ta bort detta möte permanent?
+          </p>
+          <div className="bg-red-50 border border-red-200 rounded-md p-3">
+            <p className="text-sm text-red-800">
+              <strong>Varning:</strong> Mötet kommer att tas bort helt från databasen och kan INTE återställas.
+              All historisk data och statistik kopplad till detta möte kommer att förloras permanent.
+            </p>
+          </div>
+        </div>
         <ModalFooter>
           <Button
             variant="outline"
@@ -141,7 +149,7 @@ export default function MeetingDetailClient({ meetingId }: MeetingDetailClientPr
             Avbryt
           </Button>
           <Button variant="danger" onClick={handleDelete} loading={deleteLoading}>
-            Ta bort möte
+            Ta bort permanent
           </Button>
         </ModalFooter>
       </Modal>

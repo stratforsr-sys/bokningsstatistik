@@ -94,12 +94,12 @@ export default function ListView({ meetings }: ListViewProps) {
   };
 
   const handleDelete = async (meetingId: string) => {
-    if (!confirm('Är du säker på att du vill ta bort detta möte?')) {
+    if (!confirm('Är du säker på att du vill ta bort detta möte PERMANENT? Mötet kommer att raderas helt från databasen och kan INTE återställas.')) {
       return;
     }
 
     try {
-      const res = await fetch(`/api/meetings/${meetingId}`, {
+      const res = await fetch(`/api/meetings/${meetingId}?hardDelete=true`, {
         method: 'DELETE',
         credentials: 'include',
       });

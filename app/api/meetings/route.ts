@@ -283,14 +283,19 @@ export const POST = withAuth(async (request, user) => {
 
     // Create meeting with junction records in a transaction
     const meeting = await prisma.$transaction(async (tx) => {
-      // Determine final user IDs
+      // ✅ SECURITY FIX: When a user manually creates a meeting, they should ONLY be the booker and seller
+      // This prevents meetings from appearing in other users' statistics
+      // The logged-in user (from JWT token) is the only person this meeting belongs to
       let finalBookerIds: string[];
       let finalSellerIds: string[];
 
-      if (useNewFormat) {
-        finalBookerIds = bookerIds;
-        finalSellerIds = sellerIds;
-      } else {
+      // ✅ Always use the authenticated user's ID for manually created meetings
+      // Ignore any bookerIds/sellerIds from the request body
+      finalBookerIds = [user.sub]; // user.sub = logged-in user's ID from JWT
+      finalSellerIds = [user.sub]; // Same user is both booker and seller
+
+      // Keep old format handling for backward compatibility (but not used for manual creation)
+      if (false) { // Disabled: old format handling
         // OLD FORMAT: Convert single IDs to arrays
         let finalBookerId = bookerId && bookerId.trim() !== '' ? bookerId.trim() : null;
         let finalOwnerId = ownerId && ownerId.trim() !== '' ? ownerId.trim() : null;
